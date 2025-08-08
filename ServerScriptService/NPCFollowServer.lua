@@ -959,7 +959,17 @@ function NPCFollowSystem:Cleanup()
 	end
 end
 
--- Initialize system
-NPCFollowSystem:Initialize()
+-- Initialize system with error handling
+local success, errorMessage = pcall(function()
+	NPCFollowSystem:Initialize()
+end)
 
-print("[NPCFollow] Server system loaded successfully!")
+if success then
+	-- Set global flag for diagnostic purposes
+	_G.NPCFollowSystemLoaded = true
+	print("[NPCFollow] Server system loaded successfully!")
+else
+	warn("[NPCFollow] Failed to initialize system:", errorMessage)
+	warn("[NPCFollow] Check that all scripts are in the correct locations")
+	_G.NPCFollowSystemLoaded = false
+end
