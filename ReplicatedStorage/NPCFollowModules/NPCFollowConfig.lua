@@ -81,7 +81,7 @@ NPCFollowConfig.LOD_DISTANCE = 100 -- Distance for level of detail reduction
 NPCFollowConfig.CLEANUP_INTERVAL = 5 -- How often to clean up inactive NPCs (seconds)
 
 -- DEBUG SETTINGS
-NPCFollowConfig.DEBUG_MODE = false -- Enable debug prints
+NPCFollowConfig.DEBUG_MODE = true -- Enable debug prints (set to true for troubleshooting)
 NPCFollowConfig.SHOW_PATHFINDING_WAYPOINTS = false -- Visualize pathfinding waypoints
 
 -- NPC IDENTIFICATION

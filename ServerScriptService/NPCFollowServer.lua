@@ -820,20 +820,37 @@ end
 
 function NPCFollowSystem:Initialize()
 	debugPrint("Initializing NPC Follow System...")
+	debugPrint("Looking for NPC folder:", Config.NPC_FOLDER_NAME)
 
 	-- Find NPC folder
 	local npcFolder = workspace:WaitForChild(Config.NPC_FOLDER_NAME, 10)
 	if not npcFolder then
 		warn("[NPCFollow] Could not find NPC folder:", Config.NPC_FOLDER_NAME)
+		warn("[NPCFollow] Make sure you have a folder named '" .. Config.NPC_FOLDER_NAME .. "' in Workspace")
 		return
 	end
 
+	debugPrint("Found NPC folder:", npcFolder.Name)
+	debugPrint("NPC folder contains", #npcFolder:GetChildren(), "children")
+
+	-- List all children in the folder for debugging
+	for i, child in pairs(npcFolder:GetChildren()) do
+		debugPrint("Child", i .. ":", child.Name, "(" .. child.ClassName .. ")")
+	end
+
 	-- Setup existing NPCs
+	local setupCount = 0
 	for _, npcModel in pairs(npcFolder:GetChildren()) do
 		if npcModel:IsA("Model") then
+			debugPrint("Attempting to setup NPC:", npcModel.Name)
 			self:SetupNPC(npcModel)
+			setupCount = setupCount + 1
+		else
+			debugPrint("Skipping non-Model object:", npcModel.Name, "(" .. npcModel.ClassName .. ")")
 		end
 	end
+
+	debugPrint("Successfully set up", setupCount, "NPCs")
 
 	-- Listen for new NPCs
 	npcFolder.ChildAdded:Connect(function(child)
@@ -862,13 +879,42 @@ end
 
 function NPCFollowSystem:SetupNPC(npcModel)
 	-- Check if already setup
-	if self.Controllers[npcModel] then return end
+	if self.Controllers[npcModel] then 
+		debugPrint("NPC already setup:", npcModel.Name)
+		return 
+	end
+
+	debugPrint("Creating controller for NPC:", npcModel.Name)
+	
+	-- Check NPC structure
+	local humanoid = npcModel:FindFirstChildOfClass("Humanoid")
+	local rootPart = npcModel:FindFirstChild("HumanoidRootPart") or npcModel:FindFirstChild("Torso")
+	
+	if not humanoid then
+		warn("[NPCFollow] NPC missing Humanoid:", npcModel.Name)
+		debugPrint("Available children in", npcModel.Name .. ":")
+		for _, child in pairs(npcModel:GetChildren()) do
+			debugPrint("  -", child.Name, "(" .. child.ClassName .. ")")
+		end
+		return
+	end
+	
+	if not rootPart then
+		warn("[NPCFollow] NPC missing HumanoidRootPart/Torso:", npcModel.Name)
+		debugPrint("Available children in", npcModel.Name .. ":")
+		for _, child in pairs(npcModel:GetChildren()) do
+			debugPrint("  -", child.Name, "(" .. child.ClassName .. ")")
+		end
+		return
+	end
 
 	-- Create controller
 	local controller = NPCController.new(npcModel)
 	if controller then
 		self.Controllers[npcModel] = controller
-		debugPrint("Setup NPC:", npcModel.Name)
+		debugPrint("✓ Successfully setup NPC:", npcModel.Name)
+	else
+		warn("[NPCFollow] Failed to create controller for:", npcModel.Name)
 	end
 end
 
