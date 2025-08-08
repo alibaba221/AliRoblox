@@ -85,7 +85,7 @@ NPCFollowConfig.DEBUG_MODE = true -- Enable debug prints (set to true for troubl
 NPCFollowConfig.SHOW_PATHFINDING_WAYPOINTS = false -- Visualize pathfinding waypoints
 
 -- NPC IDENTIFICATION
-NPCFollowConfig.NPC_FOLDER_NAME = "NPCS" -- Name of the folder containing NPCs in Workspace
+NPCFollowConfig.NPC_FOLDER_NAME = "NPCs" -- Name of the folder containing NPCs in Workspace
 NPCFollowConfig.NPC_TAG = "FollowNPC" -- Optional tag to identify followable NPCs
 
 -- ADVANCED SETTINGS
