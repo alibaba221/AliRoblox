@@ -61,9 +61,9 @@ local function readShots(): { { CFrame } }
 	return list
 end
 
-local function waitForTown(timeout: number): boolean
+local function waitForTown(timeout: number, cancelled: () -> boolean): boolean
 	local deadline = os.clock() + timeout
-	while os.clock() < deadline do
+	while os.clock() < deadline and not cancelled() do
 		local data = ReplicatedStorage:FindFirstChild("SicilyTownData")
 		if data and data:GetAttribute("Ready") then
 			return true
@@ -197,7 +197,9 @@ function Intro.Play(movement, hud)
 
 	-- Flyover ---------------------------------------------------------------------------------
 	local shots = {}
-	if not skipped and Config.Town.Enabled and waitForTown(30) then
+	if not skipped and Config.Town.Enabled and waitForTown(30, function()
+		return skipped
+	end) then
 		shots = readShots()
 	end
 	local shotCFrame: CFrame? = nil
@@ -245,11 +247,16 @@ function Intro.Play(movement, hud)
 
 	-- Into gameplay ---------------------------------------------------------------------------
 	hud.Fade(0, if skipped then 0.25 else 0.6).Completed:Wait()
+	local character = player.Character
+	if not character then
+		-- still spawning (the server holds spawns until the town exists): keep the title up
+		title.TextTransparency = 0
+		subtitle.TextTransparency = 0.1
+		character = player.CharacterAdded:Wait()
+	end
 	title.TextTransparency = 1
 	subtitle.TextTransparency = 1
 	rule.BackgroundTransparency = 1
-
-	local character = player.Character or player.CharacterAdded:Wait()
 	local humanoid = character:WaitForChild("Humanoid", 10)
 	shotCFrame = nil
 	RunService:UnbindFromRenderStep("SicilyIntroCamera")
