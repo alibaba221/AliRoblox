@@ -11,8 +11,9 @@
 
 	Server -> client(s)
 	  HorseEvent     (kind: string, ...)        "Mounted", "Tamed", "Thrown", "Dismounted", "Startled"
-	  CombatEvent    (kind: string, ...)        "Hit", "Damaged", "Ammo", "Rejected", "Killed"
-	  ShotFX         (shooter, weapon, ...)     unreliable, other players' muzzle flash / tracers
+	  CombatEvent    (kind: string, ...)        "Flinch", "Hit", "Damaged", "Rejected", "Reloaded"
+	  ShotFX         (shooter, weapon, origin, impacts)   unreliable, other players' shots:
+	                 impacts = { { position, normal | false, surface } } (see Ballistics.Surface)
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

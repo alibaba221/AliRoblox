@@ -9,6 +9,7 @@
 	flail on long falls), landing dip, climb, swim, sit, tool hold, lean into turns, head look,
 	riding a horse (climbing on, seated with the saddle's motion, posting trot, two-point gallop,
 	stepping off). NPC poses via the "Pose" attribute: "Sit", "Vendor", "Chat", "Lean", "Fish".
+	Guns, hit reactions and cover crouching are layered on top by UpperBody.
 
 	If another script plays an Action-priority AnimationTrack on a rig (e.g. a sword swing), the
 	upper body is left to that animation and only the legs keep walking.
@@ -42,6 +43,7 @@ local localPlayer = Players.LocalPlayer
 local SEAT = HorseMount.SeatOffset()
 local ROOT_C0 = R6.Joints[1].C0
 local horseAnimator = nil -- set in Start (HorseAnimator module), gives us the saddle's motion
+local upperBody = nil -- set in Start (UpperBody module): the gun / hit-reaction / cover layer
 local rigs = {}
 local footstepListeners = {}
 local landListeners = {}
@@ -140,6 +142,7 @@ local function blankState()
 		LastStep = nil,
 		NextMotorCheck = 0,
 		Pose = {},
+		Transforms = {},
 		Connections = {},
 		Motors = {},
 		IsLocal = false,
@@ -618,25 +621,47 @@ local function solveRig(rig, sample, dt: number, now: number, cameraCFrame: CFra
 		-- move with the saddle as the horse's body bobs and pitches
 		rootTransform = ROOT_C0:Inverse() * riding.Saddle * ROOT_C0 * rootTransform
 	end
+	local transforms = rig.Transforms
+	transforms.RootJoint = rootTransform
+	transforms.Neck = CFrame.Angles(pose.NeckPitch, -pose.NeckRoll, pose.NeckYaw)
+	transforms.RightShoulder = CFrame.Angles(-pose.RArmSpread, 0, pose.RArmSwing)
+	transforms.LeftShoulder = CFrame.Angles(-pose.LArmSpread, 0, -pose.LArmSwing)
+	transforms.RightHip = CFrame.Angles(-pose.RLegSpread, 0, pose.RLegSwing)
+	transforms.LeftHip = CFrame.Angles(-pose.LLegSpread, 0, -pose.LLegSwing)
+	if upperBody and upperBodyFree and rig.Model then
+		-- guns, hit reactions and cover on top of the locomotion
+		local ok, err = pcall(upperBody.Apply, rig, dt, transforms, {
+			Root = rootCFrame,
+			Riding = riding,
+			IsLocal = rig.IsLocal,
+			Walk = walkAmt,
+			Phase = phase,
+		})
+		if not ok and not rig.WarnedUpperBody then
+			rig.WarnedUpperBody = true
+			warn("[Sicily] Upper body layer error: " .. tostring(err))
+		end
+	end
+
 	if upperBodyFree and motors.RootJoint then
-		motors.RootJoint.Transform = rootTransform
+		motors.RootJoint.Transform = transforms.RootJoint
 	elseif motors.RootJoint and riding and riding.Saddle then
 		motors.RootJoint.Transform = ROOT_C0:Inverse() * riding.Saddle * ROOT_C0
 	end
 	if upperBodyFree and motors.Neck then
-		motors.Neck.Transform = CFrame.Angles(pose.NeckPitch, -pose.NeckRoll, pose.NeckYaw)
+		motors.Neck.Transform = transforms.Neck
 	end
 	if upperBodyFree and motors["Right Shoulder"] then
-		motors["Right Shoulder"].Transform = CFrame.Angles(-pose.RArmSpread, 0, pose.RArmSwing)
+		motors["Right Shoulder"].Transform = transforms.RightShoulder
 	end
 	if upperBodyFree and motors["Left Shoulder"] then
-		motors["Left Shoulder"].Transform = CFrame.Angles(-pose.LArmSpread, 0, -pose.LArmSwing)
+		motors["Left Shoulder"].Transform = transforms.LeftShoulder
 	end
 	if motors["Right Hip"] then
-		motors["Right Hip"].Transform = CFrame.Angles(-pose.RLegSpread, 0, pose.RLegSwing)
+		motors["Right Hip"].Transform = transforms.RightHip
 	end
 	if motors["Left Hip"] then
-		motors["Left Hip"].Transform = CFrame.Angles(-pose.LLegSpread, 0, -pose.LLegSwing)
+		motors["Left Hip"].Transform = transforms.LeftHip
 	end
 end
 
@@ -764,11 +789,12 @@ end
 
 local warned = {}
 
-function Animator.Start(horses)
+function Animator.Start(horses, upperBodyLayer)
 	if not Config.Animation.Enabled then
 		return
 	end
 	horseAnimator = horses
+	upperBody = upperBodyLayer
 	for _, model in CollectionService:GetTagged(R6.Tag) do
 		register(model)
 	end

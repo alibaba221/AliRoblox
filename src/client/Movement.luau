@@ -12,6 +12,9 @@
 	keep working. Other scripts can set these attributes on the Humanoid:
 	  SpeedMultiplier (number)  e.g. 0.5 while aiming
 	  MovementLocked  (bool)    freezes input (cutscenes, menus)
+	  NoSprint        (bool)    can't run (aiming, Dead Eye)
+	  FaceYaw         (number)  face this way instead of the move direction (aiming, cover)
+	Movement.SetInputFilter(fn) lets a module reshape the move input (sliding along cover).
 ]]
 
 local ContextActionService = game:GetService("ContextActionService")
@@ -35,6 +38,8 @@ local SPRINT_ACTION = "SicilyRun"
 local controls = nil
 local inputEnabled = true
 local characterConnections = {}
+local inputFilter: ((Vector3) -> Vector3)? = nil
+local AIM_TURN_RESPONSIVENESS = 55
 
 local state = {
 	Character = nil :: Model?,
@@ -93,6 +98,9 @@ local function smoothInput(humanoid: Humanoid, moveVector: Vector3, cameraRelati
 	state.RawInput = toWorld(moveVector, cameraRelative)
 	state.RawInputAt = os.clock()
 	local input = if isLocked(humanoid) then Vector3.zero else state.RawInput
+	if inputFilter then
+		input = inputFilter(input)
+	end
 	local current = state.Smoothed
 	local rate = if input.Magnitude >= current.Magnitude then settings.Acceleration else settings.Deceleration
 	local smoothed = current:Lerp(input, 1 - math.exp(-rate * dt))
@@ -123,7 +131,10 @@ local function updateSpeed(humanoid: Humanoid, dt: number)
 		end
 	end
 
-	local wantsRun = (state.SprintHeld or state.SprintToggle) and moving and not isLocked(humanoid)
+	local wantsRun = (state.SprintHeld or state.SprintToggle)
+		and moving
+		and not isLocked(humanoid)
+		and humanoid:GetAttribute("NoSprint") ~= true
 	if wantsRun and settings.RunOnlyForward then
 		local forward = CFrame.Angles(0, cameraYaw(), 0).LookVector
 		wantsRun = state.Smoothed.Unit:Dot(forward) > 0.3
@@ -192,7 +203,12 @@ local function updateFacing(humanoid: Humanoid, root: BasePart)
 
 	humanoid.AutoRotate = false
 	align.Enabled = true
-	if userGameSettings.RotationType == Enum.RotationType.CameraRelative then
+	local faceYaw = humanoid:GetAttribute("FaceYaw")
+	if type(faceYaw) == "number" then
+		-- aiming / cover: another module decides where we face
+		state.Yaw = faceYaw
+		align.Responsiveness = AIM_TURN_RESPONSIVENESS
+	elseif userGameSettings.RotationType == Enum.RotationType.CameraRelative then
 		state.Yaw = cameraYaw()
 		align.Responsiveness = settings.CameraRelativeTurnResponsiveness
 	else
@@ -475,6 +491,11 @@ function Movement.GetMoveInput(): Vector3
 		return Vector3.new(direction.X, 0, direction.Z)
 	end
 	return Vector3.zero
+end
+
+-- Reshapes the move input (world space) before easing, e.g. to slide along cover; nil clears it.
+function Movement.SetInputFilter(filter: ((Vector3) -> Vector3)?)
+	inputFilter = filter
 end
 
 -- Is the Run input (Shift / L3 toggle / RUN button) active?

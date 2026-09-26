@@ -84,6 +84,25 @@ function Riding.GetHorse(): Model?
 	return state.Horse
 end
 
+-- Hands busy with the horse: climbing on or off, or hanging on while taming (no guns).
+function Riding.IsBusy(): boolean
+	if not state.Horse then
+		return false
+	end
+	if state.Taming or state.DismountSent then
+		return true
+	end
+	local joint = state.Joint
+	if not joint then
+		return false
+	end
+	local mountStart = joint:GetAttribute("MountStart")
+	if type(mountStart) == "number" and serverNow() - mountStart < HorseMount.MountTime then
+		return true
+	end
+	return joint:GetAttribute("DismountStart") ~= nil
+end
+
 -- Gunplay tells us when the rider aims: the horse keeps its pace and A/D steer it.
 function Riding.SetAiming(aiming: boolean)
 	if aiming and not state.Aiming and state.Motor then
@@ -521,9 +540,12 @@ local function onHorseEvent(kind: string, ...)
 			thrown(direction)
 		end
 	elseif kind == "Startled" then
-		CameraFX.Shake(0.18, 5)
+		-- a tamed horse just flinches at gunfire; a half-wild one breaks stride
+		local horse = state.Horse
+		local tame = horse ~= nil and horse:GetAttribute("Wild") ~= true and not state.Taming
+		CameraFX.Shake(if tame then 0.07 else 0.18, 6)
 		if state.Motor and state.Motor.Speed > 4 then
-			state.Motor.Speed *= 0.85
+			state.Motor.Speed *= if tame then 0.97 else 0.85
 		end
 	elseif kind == "NotYours" then
 		hud.Toast(("That's %s's horse."):format(tostring(args[1])), 2.5)

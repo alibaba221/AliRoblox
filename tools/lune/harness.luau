@@ -20,6 +20,26 @@ roblox.implementMethod("Instance", "WaitForChild", function(self, name)
 	return child
 end)
 
+-- Events don't exist offline: connecting works (and never fires), waiting would hang.
+local function inertSignal()
+	local signal = {}
+	function signal:Connect()
+		return { Connected = true, Disconnect = function() end }
+	end
+	signal.Once = signal.Connect
+	function signal:Wait()
+		error("Waiting on an event would hang in the offline harness")
+	end
+	return signal
+end
+for className, events in { Humanoid = { "Died", "StateChanged", "Running" } } do
+	for _, event in events do
+		roblox.implementProperty(className, event, function()
+			return inertSignal()
+		end)
+	end
+end
+
 -- Minimal stand-in for Roblox's Random (deterministic LCG; good enough for tests).
 local Random = {}
 Random.__index = Random

@@ -10,7 +10,6 @@
 ]]
 
 local Players = game:GetService("Players")
-local PhysicsService = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -25,6 +24,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Taming = require(Shared:WaitForChild("Taming"))
 
 local Brain = require(script.Brain)
+local CollisionGroups = require(script.Parent.CollisionGroups)
 local Plan = require(script.Parent.Town.Plan)
 
 local Horses = {}
@@ -49,24 +49,6 @@ rayParams.RespectCanCollide = true
 
 local function serverNow(): number
 	return Workspace:GetServerTimeNow()
-end
-
--- Collision groups ------------------------------------------------------------------------------
-local function setupCollisionGroups()
-	local groups = { HorseMount.RiderGroup, HorseMount.ShotGroup }
-	for _, name in groups do
-		if not PhysicsService:IsCollisionGroupRegistered(name) then
-			PhysicsService:RegisterCollisionGroup(name)
-		end
-	end
-	-- riders are carried by their horse and never bump into anything...
-	for _, other in PhysicsService:GetRegisteredCollisionGroups() do
-		PhysicsService:CollisionGroupSetCollidable(HorseMount.RiderGroup, other.name, false)
-	end
-	-- ...but bullets still hit them (and everything else)
-	for _, other in PhysicsService:GetRegisteredCollisionGroups() do
-		PhysicsService:CollisionGroupSetCollidable(HorseMount.ShotGroup, other.name, true)
-	end
 end
 
 -- Terrain queries -----------------------------------------------------------------------------------
@@ -793,7 +775,7 @@ function Horses.Start(townInfo)
 	if not settings.Enabled then
 		return
 	end
-	setupCollisionGroups()
+	CollisionGroups.Setup()
 	Remotes.Init()
 	horseEvent = Remotes.Get("HorseEvent")
 	horseRequest = Remotes.Get("HorseRequest")

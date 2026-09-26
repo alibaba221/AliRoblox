@@ -117,6 +117,13 @@ local function buildHint()
 		local short = string.gsub(string.gsub(first, "Left", ""), "Right", "")
 		keyRow(frame, string.upper(short), "Shift lock", 2)
 	end
+	if Config.Combat.Enabled then
+		keyRow(frame, "1-5", "Draw a gun", 3)
+	end
+	if Config.Horses.Enabled then
+		keyRow(frame, "E", "Ride a horse", 4)
+		keyRow(frame, "H", "Whistle for your horse", 5)
+	end
 	return frame
 end
 
@@ -132,6 +139,12 @@ local function refreshHint()
 	if run then
 		local key = run:FindFirstChild("Key") :: TextLabel
 		key.Text = if gamepad then "L3" else "SHIFT"
+	end
+	for name, keys in { ["Draw a gun"] = { "1-5", "D-PAD" }, ["Ride a horse"] = { "E", "Y" }, ["Whistle for your horse"] = { "H", "D-PAD UP" } } do
+		local row = hint:FindFirstChild(name)
+		if row then
+			(row:FindFirstChild("Key") :: TextLabel).Text = if gamepad then keys[2] else keys[1]
+		end
 	end
 	if lock then
 		(lock :: Frame).Visible = not gamepad

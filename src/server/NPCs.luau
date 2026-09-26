@@ -6,6 +6,8 @@
 	* Spawns Castelmare's townsfolk: people strolling the streets, market vendors, café regulars,
 	  neighbours chatting, fishermen on the pier. All blocky R6 with Sicilian outfits built from
 	  parts (flat caps, fedoras, headscarves, aprons), animated by the client-side animator.
+	* Gunfire nearby makes walkers run away from it and everyone else cower; townsfolk who are
+	  shot ragdoll and someone new turns up a little later.
 ]]
 
 local Players = game:GetService("Players")
@@ -90,6 +92,9 @@ local function dress(model: Model, outfit)
 	end
 end
 
+local respawnQueue = {}
+local townsfolkFolder: Instance? = nil
+
 local function makeNPC(parent: Instance, outfit, rng: Random, rootCFrame: CFrame, anchored: boolean): (Model, Humanoid)
 	local skin = SKIN[rng:NextInteger(1, #SKIN)]
 	local model = R6.Build({
@@ -113,15 +118,53 @@ local function makeNPC(parent: Instance, outfit, rng: Random, rootCFrame: CFrame
 			root:SetNetworkOwner(nil)
 		end)
 	end
-	if Config.Characters.Ragdoll then
-		humanoid.Died:Connect(function()
+	humanoid.Died:Connect(function()
+		if anchored then
+			-- posed townsfolk are anchored; let them fall
+			for _, part in model:GetDescendants() do
+				if part:IsA("BasePart") then
+					part.Anchored = false
+				end
+			end
+		end
+		if Config.Characters.Ragdoll then
 			Ragdoll.Apply(model)
-			task.delay(12, function()
-				model:Destroy()
-			end)
+		end
+		local respawn = respawnQueue[model]
+		respawnQueue[model] = nil
+		task.delay(12, function()
+			model:Destroy()
 		end)
-	end
+		if respawn then
+			task.delay(Config.Combat.TownsfolkRespawn or 45, respawn)
+		end
+	end)
 	return model, humanoid
+end
+
+-- Townsfolk hear gunfire: walkers run, the rest cower. Called by the combat system.
+local panicking = {} -- [Model] = { Until, From }
+function NPCs.OnGunshot(position: Vector3)
+	local now = os.clock()
+	local townsfolk = townsfolkFolder
+	if townsfolk and townsfolk.Parent then
+		do
+			for _, model in townsfolk:GetChildren() do
+				local root = model:FindFirstChild("HumanoidRootPart")
+				if model:IsA("Model") and root and (root.Position - position).Magnitude < 70 then
+					panicking[model] = { Until = now + 9, From = position }
+					model:SetAttribute("Panic", true)
+					task.delay(9.2, function()
+						local entry = panicking[model]
+						if entry and os.clock() >= entry.Until then
+							panicking[model] = nil
+							model:SetAttribute("Panic", nil)
+						end
+					end)
+				end
+			end
+		end
+	end
 end
 
 local function moveTo(humanoid: Humanoid, target: Vector3, timeout: number): boolean
@@ -153,7 +196,28 @@ local function stroll(model: Model, humanoid: Humanoid, nav, rng: Random, startN
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
 	local current, previous = startNode, nil
 	local failures = 0
+	local calmSpeed = humanoid.WalkSpeed
 	while model.Parent and humanoid.Health > 0 do
+		local panic = panicking[model]
+		if panic and os.clock() < panic.Until then
+			-- run to the neighbouring node that's furthest from the gunfire
+			humanoid.WalkSpeed = 15
+			local best, bestDistance = nil, -1
+			for _, n in nav.Edges[current] or {} do
+				local d = (nav.Nodes[n] - panic.From).Magnitude
+				if d > bestDistance then
+					best, bestDistance = n, d
+				end
+			end
+			if best then
+				moveTo(humanoid, nav.Nodes[best], 6)
+				previous, current = current, best
+			else
+				task.wait(0.5)
+			end
+			continue
+		end
+		humanoid.WalkSpeed = calmSpeed
 		local neighbours = nav.Edges[current] or {}
 		if #neighbours == 0 then
 			task.wait(4)
@@ -196,17 +260,27 @@ local function spawnTownsfolk(info)
 	local folder = Instance.new("Folder")
 	folder.Name = "Townsfolk"
 	folder.Parent = town or Workspace
+	townsfolkFolder = folder
 	local rng = Random.new(Config.Town.Seed + 7)
 	local nav = info.Nav
 
 	-- Strollers on the street graph.
+	local function spawnWalker(i: number)
+		if not folder.Parent then
+			return
+		end
+		local node = rng:NextInteger(1, #nav.Nodes)
+		local outfit = OUTFITS[(i - 1) % #OUTFITS + 1]
+		local cf = CFrame.new(nav.Nodes[node] + Vector3.new(0, 3, 0)) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+		local model, humanoid = makeNPC(folder, outfit, rng, cf, false)
+		respawnQueue[model] = function()
+			spawnWalker(i)
+		end
+		task.spawn(stroll, model, humanoid, nav, Random.new(rng:NextInteger(1, 1e6)), node)
+	end
 	if nav and #nav.Nodes > 0 then
 		for i = 1, Config.Town.TownsfolkCount do
-			local node = rng:NextInteger(1, #nav.Nodes)
-			local outfit = OUTFITS[(i - 1) % #OUTFITS + 1]
-			local cf = CFrame.new(nav.Nodes[node] + Vector3.new(0, 3, 0)) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
-			local model, humanoid = makeNPC(folder, outfit, rng, cf, false)
-			task.spawn(stroll, model, humanoid, nav, Random.new(rng:NextInteger(1, 1e6)), node)
+			spawnWalker(i)
 		end
 	end
 
@@ -215,18 +289,26 @@ local function spawnTownsfolk(info)
 			if i > limit then
 				break
 			end
-			local model = makeNPC(folder, outfitPicker(i), rng, cf, true)
-			model:SetAttribute("Pose", pose)
-			if pose == "Fish" then
-				-- rod held in the hands, pointing forward and up while the arms are out
-				local direction = Vector3.new(0, -0.41, -0.91)
-				local rodOffset = CFrame.new(Vector3.new(0, -1, 0) + direction * 3.3) * CFrame.lookAt(Vector3.zero, direction).Rotation
-				R6.AttachProp(model, "Right Arm", rodOffset, {
-					Size = Vector3.new(0.14, 0.14, 7),
-					Color = rgb(120, 90, 60),
-					Material = M.Wood,
-				})
+			local function spawnOne()
+				if not folder.Parent then
+					return nil
+				end
+				local model = makeNPC(folder, outfitPicker(i), rng, cf, true)
+				model:SetAttribute("Pose", pose)
+				respawnQueue[model] = spawnOne
+				if pose == "Fish" then
+					-- rod held in the hands, pointing forward and up while the arms are out
+					local direction = Vector3.new(0, -0.41, -0.91)
+					local rodOffset = CFrame.new(Vector3.new(0, -1, 0) + direction * 3.3) * CFrame.lookAt(Vector3.zero, direction).Rotation
+					R6.AttachProp(model, "Right Arm", rodOffset, {
+						Size = Vector3.new(0.14, 0.14, 7),
+						Color = rgb(120, 90, 60),
+						Material = M.Wood,
+					})
+				end
+				return model
 			end
+			spawnOne()
 		end
 	end
 	local function randomOutfit()

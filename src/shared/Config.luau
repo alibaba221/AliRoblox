@@ -204,6 +204,81 @@ Config.Horses = {
 	NeighSoundId = "",
 }
 
+-- Combat --------------------------------------------------------------------------
+-- Weapon stats (damage, fire rate, recoil, spread, ammo, reload): SicilyShared.Weapons
+Config.Combat = {
+	Enabled = true,
+	-- Guns every player spawns with (ids from SicilyShared.Weapons). Keys 1-5 pick them.
+	Loadout = { "Cattleman", "Mauser", "Carbine", "Carcano", "Lupara" },
+	PvP = true, -- players can hurt each other
+	DamageTownsfolk = true, -- townsfolk can be shot (they ragdoll and come back later)
+	TownsfolkRespawn = 45,
+	GunBelt = true, -- leather belt, holsters and a bandolier on every player
+
+	-- Hit validation (the server checks every hit a client reports)
+	MaxOriginDistance = 7, -- muzzle must be this close to the shooter's head (+ movement)
+	HitTolerance = 2.5, -- extra studs allowed between a reported hit and the part (lag, poses)
+	FireRateTolerance = 0.05, -- seconds of slack on the fastest allowed fire rate
+
+	-- Dead Eye: slow the moment down and paint targets, then fire at all of them.
+	DeadEye = {
+		Enabled = true,
+		Max = 100,
+		Cost = 25, -- needed to activate
+		DrainPerSecond = 16,
+		RegenPerSecond = 2.5,
+		RegenPerHit = 6,
+		ShotInterval = 0.13, -- time between the marked shots
+		SlowWalk = 0.55, -- your own movement is slowed while it's active
+	},
+
+	-- Aim assist (never on mouse): a gentle pull when you start aiming near a target and a
+	-- little friction while the crosshair is on one.
+	AimAssist = {
+		Gamepad = 1,
+		Touch = 1.3,
+		Mouse = 0,
+		SnapAngle = 7, -- degrees around the crosshair a target can be snapped from
+		SnapStrength = 0.6,
+		Friction = 0.35,
+		Range = 180,
+	},
+
+	Cover = {
+		Enabled = true,
+		SearchDistance = 4.5,
+		LowHeight = 4.2, -- cover lower than this (above your feet) is crouched behind
+	},
+
+	-- Controls
+	Keys = {
+		Aim = { Enum.UserInputType.MouseButton2, Enum.KeyCode.ButtonL2 },
+		Fire = { Enum.UserInputType.MouseButton1, Enum.KeyCode.ButtonR2 },
+		Reload = { Enum.KeyCode.R, Enum.KeyCode.ButtonX },
+		Holster = { Enum.KeyCode.X, Enum.KeyCode.DPadDown },
+		NextWeapon = { Enum.KeyCode.Q, Enum.KeyCode.DPadRight },
+		PreviousWeapon = { Enum.KeyCode.DPadLeft },
+		DeadEye = { Enum.KeyCode.F, Enum.KeyCode.ButtonR3 },
+		Cover = { Enum.KeyCode.C, Enum.KeyCode.ButtonR1 },
+		Slots = { Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five },
+	},
+
+	-- Optional real sounds (rbxassetid://...). "" keeps the built-in stand-ins.
+	Sounds = {
+		Revolver = "",
+		Pistol = "",
+		Repeater = "",
+		Rifle = "",
+		Shotgun = "",
+		Reload = "",
+		Cock = "",
+		Impact = "",
+		Ricochet = "",
+		DeadEyeLoop = "",
+	},
+	ShowBloodPuffs = false, -- red puffs on hits instead of dust
+}
+
 -- Audio ---------------------------------------------------------------------------
 Config.Audio = {
 	Footsteps = true,

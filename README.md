@@ -2,6 +2,8 @@
 
 Replaces the cowboy map with a generated **Sicilian seaside town**, switches every character (players and NPCs) to **blocky R6**, and adds **weighty third-person movement**: a relaxed walk, Shift to run, a cinematic camera and procedural animation.
 
+The countryside has **wild horses** to tame and ride, and every player carries **western guns** that work on foot and at a full gallop.
+
 ![Piazza del Duomo](docs/piazza-overview.jpg)
 
 | | |
@@ -44,6 +46,35 @@ Replaces the cowboy map with a generated **Sicilian seaside town**, switches eve
 
 ![Townsfolk](docs/townsfolk.jpg)
 
+**Wild horses** (`src/server/Horses/`, `src/client/Riding.luau`, `HorseAnimator.luau`, `src/shared/Horse*.luau`)
+- Four herds roam the meadows outside town, each with its own temperament (Calm, Spirited, Wild) and seven coats with markings. Horses graze, wander, prick their ears when you come close and bolt from gunfire.
+- **Press E to mount.** You climb on in one smooth motion; there's no teleport. The first ride on a wild horse is a taming: it bucks, spins and lunges while you **mash E** (Y / tap) to calm it. Keep the meter up and it's yours (it gets a saddle, and hearts pop up); let it slip and you're thrown off, then you can try again a moment later.
+- Riding: **W** trots where the camera looks, **Shift** gallops (it costs stamina; a fresh press spurs a burst), **Alt** walks, **S** pulls up and then backs up, and **Space** jumps. The horse speeds up and brakes with weight, and turns wider the faster it goes. Slopes, steps and water (it swims) are handled.
+- Every hoof is planted by a procedural gait (walk, trot, canter, gallop), so nothing skates. The rider posts at the trot and rises out of the saddle at the gallop. The camera pulls back and swings in behind the horse.
+- **Whistle (H)** and your horse comes to you. Two saddled horses wait at the stable by the west gate.
+
+| | |
+|---|---|
+| ![Galloping](docs/horses-gallop.jpg) | ![Riders](docs/riders.jpg) |
+
+**Gunplay** (`src/client/Gunplay.luau`, `UpperBody.luau`, `WeaponFX.luau`, `CombatHud.luau`, `src/server/Combat/`, `src/shared/Weapons.luau`)
+- Five guns on a gun belt: the **Cattleman** revolver (right hip), **Mauser** pistol (cross-draw on the left hip), **Carbine** lever-action repeater and **Carcano** bolt-action rifle (on the back), and the **Lupara** sawn-off shotgun (slung low). They're all built from parts and stay visible while holstered.
+- **Hold RMB / L2** to aim over the shoulder, **LMB / R2** to fire. Hip-fire is quicker but spreads more. Moving, riding and firing fast widen the spread, and the crosshair shows the real spread. Every shot kicks the view.
+- Each gun works its own action (hammer, lever, bolt, break-open) and reloads its own way: round by round, a stripper clip, or shells into the open breech. The free hand fetches rounds from the belt.
+- Effects: muzzle fire and flash, smoke, the report with a canyon echo, faint bullet streaks, and impacts that match the surface (dust, stone chips, splinters, sparks, splashes). Bullet marks, spent casings, and people flinching where they're hit.
+- **From the saddle:** draw, aim and shoot at a gallop. The horse keeps its pace while you aim (A/D steer it), your body turns toward the aim while your legs stay in the stirrups, and the camera goes over the shoulder. Your horse flinches at the shots but stays under control.
+- **Dead Eye (F / R3):** the world drains to sepia and your heart thumps. Tap fire to paint marks on targets, then let go of aim to fire at each one in turn.
+- **Cover (C / R1):** crouch behind low walls and crates (you rise to shoot over them), or stand against high cover.
+- **Aim assist** on gamepad and touch only: a gentle snap when you start aiming, and light tracking.
+- **Mobile:** FIRE (drag your thumb on it to keep aiming), AIM, GUN, RELOAD, DEAD EYE and COVER buttons.
+- **Shooting range** by the west gate: bottles that shatter, cans that get knocked off their crates, and ammo crates to refill.
+- **Server-authoritative:** the server tracks every gun's ammo, fire rate, draw and reload timing. It re-checks every hit before dealing damage: the muzzle is near the shooter, the fire rate is legal, the hit is on the bullet's path and in range, the struck part was really there (allowing for lag), and no wall is in the way. Damage always comes from the gun's stats, by body part and distance. Townsfolk panic at gunfire; wild horses bolt.
+
+| | |
+|---|---|
+| ![Mounted combat](docs/mounted-combat.jpg) | ![Riding out](docs/mounted-posse.jpg) |
+| ![Shooting range](docs/shooting-range.jpg) | |
+
 **Presentation**: golden-hour lighting (plus `BlueHour` and `Midday` presets), a letterboxed intro flyover with a title card (any key skips it), a controls hint, a run vignette and a fade-in on respawn.
 
 ## Install into Place1
@@ -75,11 +106,25 @@ require(game.ServerScriptService.SicilyServer.Town).Bake()
 When a baked `SicilianTown` model exists, the server reuses it instead of generating a new one. Re-run `Bake()` to regenerate it.
 
 ## Controls
-| | Keyboard | Gamepad | Mobile |
+| | Keyboard & mouse | Gamepad | Mobile |
 |---|---|---|---|
 | Run | hold **Shift** | click **L3** (toggle) | **RUN** button (toggle) |
 | Shift-lock | **Ctrl** | — | — |
+| Mount / dismount a horse | **E** | **Y** | tap the prompt / **DISMOUNT** |
+| Calm a wild horse (taming) | mash **E** | mash **Y** | mash **CALM** |
+| Ride · gallop · walk | **W** · **Shift** · **Alt** | left stick · **L3** | stick · **RUN** |
+| Horse jump | **Space** | **A** | jump |
+| Whistle for your horse | **H** | D-pad up | — |
+| Aim | hold **RMB** (gun out) | hold **L2** | **AIM** (toggle) |
+| Shoot (draws when holstered) | **LMB** | **R2** | **FIRE** |
+| Reload | **R** | **X** | **RELOAD** |
+| Pick a gun | **1–5**, **Q** | D-pad left / right | **GUN** |
+| Holster | **X** (or the same number) | D-pad down | **GUN** after the last gun |
+| Dead Eye | **F** | **R3** | **DEAD EYE** |
+| Take / leave cover | **C** | **R1** | **COVER** |
 | Skip intro | any key | any button | tap |
+
+With guns holstered, RMB turns the camera as usual; with a gun out, the mouse steers the camera directly.
 
 ## Settings
 Everything is in **`ReplicatedStorage.SicilyShared.Config`**. The most useful settings:
@@ -99,6 +144,20 @@ Everything is in **`ReplicatedStorage.SicilyShared.Config`**. The most useful se
 | `Lighting.Preset` | `"GoldenHour"` | also `"BlueHour"`, `"Midday"` |
 | `Lighting.DayNightCycle` | false | lamps switch on at dusk when enabled |
 | `Intro.Enabled` / `Title` | true / `"CASTELMARE"` | opening flyover |
+| `Horses.Herds` | 4 herds | where wild horses graze, how many, their temperament |
+| `Horses.StableHorses` | 2 | saddled horses at the stable |
+| `Combat.Loadout` | 5 guns | ids from `SicilyShared.Weapons` (keys 1–5) |
+| `Combat.PvP` / `DamageTownsfolk` | true / true | who can be shot |
+| `Combat.DeadEye`, `AimAssist`, `Cover` | on | the extras (`Enabled = false` turns one off) |
+| `Combat.Sounds` | `""` | real gunshot / reload sound ids (see below) |
+
+**Guns** live in **`ReplicatedStorage.SicilyShared.Weapons`**: damage, head/limb multipliers, range and falloff, fire rate (aimed and hip), magazine, reserve, reload type and timing, draw time, spread, recoil, aim FOV and aim assist. To add a variant, inherit from a gun and change only what differs:
+```lua
+Weapons.Defs.Schofield = { Inherit = "Cattleman", DisplayName = "Schofield Revolver", Damage = 42 }
+```
+Then add its id to `Config.Combat.Loadout`. Horse temperaments (speeds, turning, stamina, taming difficulty) and coats are in `SicilyShared.HorseTypes`.
+
+**Sounds:** everything here uses only assets that ship with Roblox, so nothing needs uploading. The gunshots are a stock explosion clip, sped up and trimmed, with an echo. They work, but real western sounds are much better. Paste sound ids from the Creator Store into `Config.Combat.Sounds` (per gun class, plus reload, cock, impact, ricochet and a Dead Eye loop) and `Config.Horses` (hooves, snort, neigh).
 
 ## Working with your existing game
 - **Speed changes from your scripts:** set attributes on the Humanoid rather than `WalkSpeed`, because the controller sets `WalkSpeed` every frame. Use `SpeedMultiplier` (e.g. `0.5` while aiming) and `MovementLocked` (true freezes input).
@@ -106,15 +165,22 @@ Everything is in **`ReplicatedStorage.SicilyShared.Config`**. The most useful se
 - **R15 animations** won't play on R6 rigs; re-make any you need for R6. Action-priority tracks still override the upper body.
 - **Scripts that look up R15 part names** (`UpperTorso`, `LeftHand`…) need the R6 names (`Torso`, `Left Arm`…).
 - **Spawns:** players always land in the piazza. To keep your own spawn logic, set `Town.UseTownSpawns = false`.
+- **Hooking into combat:** server scripts can listen with `Combat.OnGunshot(function(position, shooter) end)` and `Combat.OnHit(function(instance, from, shooter) end)`, and refill a player's reserve ammo with `Combat.Refill(player)` (the Combat module is `ServerScriptService.SicilyServer.Combat`). Guns aren't Tools, so they don't use the Backpack.
 - **Performance:** the generated town is about 20k anchored parts and ~200 lights, with terrain for the land and sea. It works with StreamingEnabled. Most small trim skips collision and shadows. To trim further, lower `Town.TownsfolkCount` or bake and then delete the areas you don't need.
 
 ## Project layout
 ```
-src/shared/     Config, R6 rig builder, Spring
-src/server/     boot script, Characters, RigConverter, Ragdoll, NPCs, LightingPreset
+src/shared/     Config, R6 rig builder, Spring, Remotes
+                horses: HorseTypes, HorseRig, HorseGait, HorseMotor, HorseMount, Taming
+                guns: Weapons, WeaponModels, AimRig, Ballistics
+src/server/     boot script, Characters, RigConverter, Ragdoll, NPCs, LightingPreset, CollisionGroups
 src/server/Town Plan (layout + terrain recipe), Landscape, Streets, Buildings, Facade,
                 Landmarks, Harbour, Countryside, Props, Nav, Kit, Palette, Rng
-src/client/     Movement, CameraFX, Animator, Sounds, Hud, Intro
+src/server/Horses   herds, taming, ownership (init) and the riderless AI (Brain)
+src/server/Combat   loadouts, ammo, hit validation, damage (init) and the shooting range (Targets)
+src/client/     Movement, CameraFX, Animator, Sounds, Hud, Intro, Fx
+                horses: HorseAnimator, Riding, RideHud
+                guns: Gunplay, UpperBody, WeaponFX, CombatHud, CombatTouch, AimAssist, DeadEye, Cover
 src/overrides/  empty Animate / RbxCharacterSounds that replace Roblox's defaults
 tools/          offline checks (Lune), preview renderer (three.js), installer, build script
 ```
@@ -123,6 +189,8 @@ tools/          offline checks (Lune), preview renderer (three.js), installer, b
 `tools/build.sh` builds the installer and demo place with [Rojo](https://rojo.space) and runs the offline checks with [Lune](https://lune-org.github.io/docs):
 - `tools/lune/build-town.luau` runs the real generator against the built place. Lune validates every property, enum and value type against Roblox's API, and the script prints part, light and NPC-spot counts.
 - `tools/lune/test-characters.luau` checks the R6 rig and drives the real animation solver through every state, checking foot contact. It also builds every townsfolk outfit and converts a mock R15 NPC in place.
+- `tools/lune/test-horses.luau` runs the gait solver through every gait, turns, slopes and steps, and fails on sliding, floating or popping hooves. `test-riding.luau` checks the horse's handling, taming difficulty and herd AI.
+- `tools/lune/test-weapons.luau` builds every gun and checks the aim maths. `test-gunplay.luau` drives the real animation layer through draws, cross-draws, aiming, reloads, switching, mounted aiming (the legs must not move), cover and hit reactions. `test-combat.luau` runs the real server combat module against fake players: fire rate, ammo, damage by body part, every hit-validation rule, reloads, Dead Eye and the range targets.
 - `tools/preview/render.mjs` renders the preview shots above (`npm install` in `tools/preview`, then `node render.mjs <dir with town.json>`).
 
-These checks run outside Roblox. The town generator and animation maths are exercised for real, but the in-engine parts (the PlayerModule hook, camera, spawning, terrain fills, NPC walking) run for the first time in your Studio. If anything errors, the Output window will say which `[Sicily]` module failed.
+These checks run outside Roblox. The town generator, animation, gait and combat logic are exercised for real, but the in-engine parts (the PlayerModule hook, camera, input, spawning, physics, terrain fills, NPC walking, network timing and effects) run for the first time in your Studio. If anything errors, the Output window will say which `[Sicily]` module failed. Test multiplayer with **Test → Clients and Servers** (2 players) to try PvP and mounted combat.

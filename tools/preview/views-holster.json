@@ -1,0 +1,4 @@
+[
+  { "name": "w-holster", "pos": [-57, 4.8, 9], "target": [-57, 3, 0], "fov": 42 },
+  { "name": "w-holster-34", "pos": [-64, 4.5, 5], "target": [-60, 2.6, 0], "fov": 45 }
+]

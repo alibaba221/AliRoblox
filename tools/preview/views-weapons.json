@@ -1,0 +1,9 @@
+[
+  { "name": "w-holster", "pos": [-57, 4.8, 9], "target": [-57, 3, 0], "fov": 42 },
+  { "name": "w-aim-revolver", "pos": [-27, 4.8, -12], "target": [-27, 3.5, -20], "fov": 50 },
+  { "name": "w-aim-pistol", "pos": [-13, 4.8, -12], "target": [-13, 3.5, -20], "fov": 50 },
+  { "name": "w-aim-carbine", "pos": [1, 4.8, -12], "target": [1, 3.5, -20], "fov": 50 },
+  { "name": "w-aim-rifle-34", "pos": [20, 5.5, -14], "target": [14, 3.5, -20], "fov": 50 },
+  { "name": "w-aim-shotgun", "pos": [29, 4.8, -12], "target": [29, 3.5, -20], "fov": 50 },
+  { "name": "w-ready", "pos": [-2, 6, 34], "target": [-2, 3, 20], "fov": 65 }
+]

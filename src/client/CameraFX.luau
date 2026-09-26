@@ -8,7 +8,8 @@
 	  * Slight roll when strafing, subtle shake at full sprint, springy dip on hard landings.
 	  * Riding: pulled back to frame the horse, and it swings in behind the horse when you stop
 	    steering the camera.
-	  * Aiming: over-the-shoulder view with a narrower FOV (weapons set this every frame).
+	  * Aiming: over-the-shoulder view with a narrower FOV (weapons set this every frame); with a
+	    gun out but not aimed, the camera already sits a little over the shoulder.
 	  * Recoil kick, impact/bucking shake, and gentle rotation (aim assist) for other modules.
 
 	Visual offsets are removed right before the default camera updates and re-applied right after,
@@ -58,6 +59,7 @@ local aim = {
 	FOV = 55,
 	Mounted = false,
 }
+local ready = { Target = 0, Alpha = 0 } -- gun out, not aiming: a lighter shoulder offset
 local mouseLocked = false
 local fovOverride: number? = nil
 
@@ -140,6 +142,11 @@ function CameraFX.GetAimAlpha(): number
 	return aim.Alpha
 end
 
+-- Gun out but not aimed (0..1): the camera slides part of the way over the shoulder.
+function CameraFX.SetReady(alpha: number)
+	ready.Target = alpha
+end
+
 -- Lock the mouse to the centre of the screen (weapon drawn) and hide the cursor.
 function CameraFX.SetMouseLocked(locked: boolean)
 	if mouseLocked and not locked then
@@ -215,6 +222,7 @@ function CameraFX.Start(movement, animator)
 
 		ride.Blend = approach(ride.Blend, if ride.Active then 1 else 0, 3, dt)
 		aim.Alpha = approach(aim.Alpha, aim.Target, if aim.Target > aim.Alpha then 11 else 8, dt)
+		ready.Alpha = approach(ready.Alpha, ready.Target, 5, dt)
 		local speed, horseLook = horseSpeed()
 		local gallop = if ride.Active then math.clamp((speed - 20) / 12, 0, 1) else 0
 
@@ -286,10 +294,11 @@ function CameraFX.Start(movement, animator)
 		if not firstPerson then
 			-- riding: pull back so the horse is in frame
 			local extra = rideSettings.CameraExtraDistance * ride.Blend * (1 - aim.Alpha)
-			-- aiming: over the shoulder, closer in
+			-- aiming: over the shoulder, closer in (a gun at the ready only shifts sideways)
 			local aimOffset = Vector3.zero
-			if aim.Alpha > 0.001 then
-				aimOffset = Vector3.new(aim.Shoulder.X, aim.Shoulder.Y, aim.Distance - distance) * aim.Alpha
+			local shoulder = math.max(aim.Alpha, ready.Alpha * 0.55)
+			if shoulder > 0.001 then
+				aimOffset = Vector3.new(aim.Shoulder.X * shoulder, aim.Shoulder.Y * shoulder, (aim.Distance - distance) * aim.Alpha)
 			end
 			local wanted = Vector3.new(0, 0, extra) + aimOffset
 			if wanted.Magnitude > 0.01 then

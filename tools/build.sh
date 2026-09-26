@@ -12,5 +12,8 @@ tmp="$(mktemp -d)"
 lune run tools/lune/test-characters.luau build/SicilyDemo.rbxl "$tmp/rigs"
 lune run tools/lune/test-horses.luau build/SicilyDemo.rbxl "$tmp/horses"
 lune run tools/lune/test-riding.luau build/SicilyDemo.rbxl
+lune run tools/lune/test-weapons.luau build/SicilyDemo.rbxl "$tmp/weapons"
+lune run tools/lune/test-gunplay.luau build/SicilyDemo.rbxl "$tmp/gunplay"
+lune run tools/lune/test-combat.luau build/SicilyDemo.rbxl
 lune run tools/lune/build-town.luau build/SicilyDemo.rbxl "$tmp/town"
 echo "Built build/SicilyUpgrade.rbxm and build/SicilyDemo.rbxl"

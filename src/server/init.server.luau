@@ -9,19 +9,28 @@
 	     then save the place.)
 	  4. Townsfolk NPCs + converts existing NPCs to blocky R6.
 	  5. Wild horses you can tame and ride, and saddled horses at the stable.
+	  6. Guns: loadouts, server-validated shooting, the shooting range.
 
 	All settings: ReplicatedStorage.SicilyShared.Config
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Config = require(ReplicatedStorage:WaitForChild("SicilyShared"):WaitForChild("Config"))
+local Shared = ReplicatedStorage:WaitForChild("SicilyShared")
+local Config = require(Shared:WaitForChild("Config"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Characters = require(script.Characters)
+local CollisionGroups = require(script.CollisionGroups)
+local Combat = require(script.Combat)
 local Horses = require(script.Horses)
 local LightingPreset = require(script.LightingPreset)
 local NPCs = require(script.NPCs)
 local Town = require(script.Town)
+
+-- Remotes and collision groups first, so clients that join while the town generates don't wait.
+Remotes.Init()
+CollisionGroups.Setup()
 
 local townExists = Town.GetBuilt() ~= nil
 local releaseSpawns = Characters.Start({
@@ -55,3 +64,16 @@ local ok, err = pcall(Horses.Start, townInfo)
 if not ok then
 	warn("[Sicily] Horses failed to start: " .. tostring(err))
 end
+
+ok, err = pcall(Combat.Start, townInfo)
+if not ok then
+	warn("[Sicily] Combat failed to start: " .. tostring(err))
+end
+-- horses and townsfolk react to gunfire and to being hit
+Combat.OnGunshot(function(position, shooter)
+	Horses.OnGunshot(position, shooter)
+	NPCs.OnGunshot(position)
+end)
+Combat.OnHit(function(instance, from)
+	Horses.OnHit(instance, from)
+end)
