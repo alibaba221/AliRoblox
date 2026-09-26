@@ -1,0 +1,31 @@
+{
+  "name": "SicilyUpgrade",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "SicilyShared": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "SicilyServer": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "SicilyClient": {
+          "$path": "src/client"
+        },
+        "RbxCharacterSounds": {
+          "$path": "src/overrides/RbxCharacterSounds.client.luau"
+        }
+      },
+      "StarterCharacterScripts": {
+        "Animate": {
+          "$path": "src/overrides/Animate.client.luau"
+        }
+      }
+    }
+  }
+}

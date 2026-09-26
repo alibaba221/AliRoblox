@@ -1,0 +1,5 @@
+[
+  { "name": "poses-left", "pos": [-22, 5, 13], "target": [-22, 2.6, 0], "fov": 60 },
+  { "name": "poses-right", "pos": [16, 5, 13], "target": [16, 2.6, 0], "fov": 60 },
+  { "name": "outfits", "pos": [0, 6, 6], "target": [0, 3, -16], "fov": 70 }
+]

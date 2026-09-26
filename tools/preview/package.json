@@ -1,0 +1,9 @@
+{
+  "name": "sicily-town-preview",
+  "private": true,
+  "type": "module",
+  "description": "Offline 3D preview of the generated town (three.js in headless Chromium).",
+  "dependencies": {
+    "three": "^0.170.0"
+  }
+}

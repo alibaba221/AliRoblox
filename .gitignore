@@ -1,0 +1,7 @@
+node_modules/
+tools/preview/out/
+*.rbxl.lock
+*.rbxlx.lock
+roblox.yml
+tools/preview/out
+tools/preview/package-lock.json
