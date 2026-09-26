@@ -546,9 +546,19 @@ local function solveRig(rig, sample, dt: number, now: number, cameraCFrame: CFra
 end
 
 local function updateRig(rig, dt: number, now: number, cameraCFrame: CFrame)
-	local root: BasePart = rig.Root
 	local humanoid: Humanoid = rig.Humanoid
 	local model: Model = rig.Model
+	local root: BasePart = rig.Root
+	if not root.Parent then
+		-- streamed out/in or rebuilt: pick up the current parts
+		local newRoot = model:FindFirstChild("HumanoidRootPart")
+		if not newRoot or not newRoot:IsA("BasePart") then
+			return
+		end
+		root = newRoot
+		rig.Root = newRoot
+		rig.Motors = R6.GetMotors(model)
+	end
 
 	if humanoid.Health <= 0 or model:GetAttribute("SicilyRagdolled") then
 		return

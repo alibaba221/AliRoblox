@@ -54,6 +54,7 @@ local state = {
 	Yaw = 0,
 	MinVY = 0,
 	LastProcess = os.clock(),
+	LastHook = 0,
 }
 Movement.State = state
 
@@ -201,37 +202,48 @@ local function updateFacing(humanoid: Humanoid, root: BasePart)
 	align.CFrame = CFrame.Angles(0, state.Yaw, 0)
 end
 
--- Runs once per frame from the ControlModule; returns the move vector to hand to the Humanoid.
-local function step(moveVector: Vector3, cameraRelative: boolean): (Vector3, boolean)
+-- Called by the ControlModule every frame with the raw input; returns the eased move vector.
+local function smoothMove(moveVector: Vector3, cameraRelative: boolean): (Vector3, boolean)
+	local humanoid = state.Humanoid
+	if not humanoid or not humanoid.Parent or humanoid.Health <= 0 or humanoid.Sit then
+		return moveVector, cameraRelative
+	end
 	local now = os.clock()
 	local dt = math.clamp(now - state.LastProcess, 1 / 240, 0.1)
 	state.LastProcess = now
+	state.LastHook = now
+	return smoothInput(humanoid, moveVector, cameraRelative, dt), false
+end
 
+-- Runs every frame right after the ControlModule: speed, run state and body facing.
+local function postInput(dt: number)
 	local humanoid, root = state.Humanoid, state.Root
-	if not humanoid or not root or not humanoid.Parent or humanoid.Health <= 0 or humanoid.Sit then
-		return moveVector, cameraRelative
+	if not humanoid or not root or not humanoid.Parent or humanoid.Health <= 0 then
+		return
 	end
-
+	if os.clock() - (state.LastHook or 0) > 0.25 then
+		-- The PlayerModule didn't route input through us (custom controls, vehicles, a newer
+		-- PlayerModule...): follow the humanoid's own move direction so facing still works.
+		local direction = humanoid.MoveDirection
+		state.Smoothed = state.Smoothed:Lerp(Vector3.new(direction.X, 0, direction.Z), 1 - math.exp(-12 * dt))
+	end
 	if humanoid:GetState() == HST.Freefall then
 		state.MinVY = math.min(state.MinVY, root.AssemblyLinearVelocity.Y)
 	end
-
-	local smoothed = smoothInput(humanoid, moveVector, cameraRelative, dt)
 	updateSpeed(humanoid, dt)
 	updateFacing(humanoid, root)
-	return smoothed, false
 end
 
 local function hookControls(): boolean
 	local playerScripts = player:WaitForChild("PlayerScripts")
 	local moduleScript = playerScripts:WaitForChild("PlayerModule", 30)
 	if not moduleScript then
-		warn("[Sicily] PlayerModule not found; premium movement disabled.")
+		warn("[Sicily] PlayerModule not found; movement easing disabled (running still works).")
 		return false
 	end
 	local ok, playerModule = pcall(require, moduleScript)
 	if not ok or type(playerModule) ~= "table" or type(playerModule.GetControls) ~= "function" then
-		warn("[Sicily] Couldn't load PlayerModule controls; premium movement disabled.")
+		warn("[Sicily] Couldn't load PlayerModule controls; movement easing disabled (running still works).")
 		return false
 	end
 	controls = playerModule:GetControls()
@@ -247,18 +259,18 @@ local function hookControls(): boolean
 	if type(controls.moveFunction) == "function" then
 		local original = controls.moveFunction
 		controls.moveFunction = function(p, moveVector, cameraRelative)
-			local ok2, vector, relative = pcall(step, moveVector, cameraRelative)
+			local ok2, vector, relative = pcall(smoothMove, moveVector, cameraRelative)
 			if ok2 then
 				return original(p, vector, relative)
 			end
 			return original(p, moveVector, cameraRelative)
 		end
-	else
-		-- Fallback for forked PlayerModules: override the move right after the ControlModule runs.
-		RunService:BindToRenderStep("SicilyMovement", Enum.RenderPriority.Input.Value + 1, function()
+	elseif type(controls.GetMoveVector) == "function" then
+		-- Forked PlayerModule without moveFunction: re-issue the eased move after it runs.
+		RunService:BindToRenderStep("SicilyMovementInput", Enum.RenderPriority.Input.Value + 1, function()
 			local humanoid = state.Humanoid
-			if humanoid and humanoid.Parent and type(controls.GetMoveVector) == "function" then
-				local vector, relative = step(controls:GetMoveVector(), true)
+			if humanoid and humanoid.Parent and inputEnabled then
+				local vector, relative = smoothMove(controls:GetMoveVector(), true)
 				humanoid:Move(vector, relative)
 			end
 		end)
@@ -421,6 +433,7 @@ function Movement.Start()
 	end
 	task.spawn(hookControls)
 	bindInput()
+	RunService:BindToRenderStep("SicilyMovement", Enum.RenderPriority.Input.Value + 2, postInput)
 	if player.Character then
 		task.spawn(onCharacterAdded, player.Character)
 	end

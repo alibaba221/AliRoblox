@@ -103,6 +103,28 @@ print(("Spawns: %d  Nav nodes: %d  Vendors: %d  Seats: %d  Chats: %d  Leans: %d 
 	#info.SpawnCFrames, #info.Nav.Nodes, #info.Vendors, #info.Seats, #info.Chats, #info.Leans, #info.Fish, #info.Shots, #info.Shops
 ))
 
+-- A baked town must reproduce the same data when read back (spawns, NPC spots, routes, shots).
+local readBack = Town.ReadData(model)
+local function same(key)
+	local a, b = #info[key], #readBack[key]
+	assert(a == b, ("baked data mismatch for %s: %d vs %d"):format(key, a, b))
+end
+for _, key in { "SpawnCFrames", "Vendors", "Seats", "Leans", "Fish", "Shots", "Chats" } do
+	same(key)
+end
+assert(#readBack.Nav.Nodes == #info.Nav.Nodes, "nav nodes round-trip")
+local edgesA, edgesB = 0, 0
+for i in info.Nav.Edges do
+	edgesA += #info.Nav.Edges[i]
+	edgesB += #(readBack.Nav.Edges[i] or {})
+end
+assert(edgesA == edgesB, "nav edges round-trip")
+Town.Publish(info)
+local shotsFolder = game:GetService("ReplicatedStorage").SicilyTownData.Shots
+assert(#shotsFolder:GetChildren() == #info.Shots, "published intro shots")
+assert(shotsFolder:FindFirstChild("01_A") and shotsFolder:FindFirstChild("04_B"), "shot naming")
+print(("Baked-town round trip OK (%d nav edges, %d shots published)"):format(edgesA / 2, #info.Shots))
+
 local navNodes = {}
 for _, n in info.Nav.Nodes do
 	table.insert(navNodes, { n.X, n.Y, n.Z })

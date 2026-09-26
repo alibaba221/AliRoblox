@@ -198,8 +198,12 @@ local function startDayNightCycle()
 	end)
 end
 
-function LightingPreset.Apply(presetName: string?)
+local lampSignalConnected = false
+
+-- options.EditMode: applying from the Command Bar (Town.Bake) — never start the clock loop there.
+function LightingPreset.Apply(presetName: string?, options: { EditMode: boolean? }?)
 	local preset = PRESETS[presetName or "GoldenHour"] or PRESETS.GoldenHour
+	local editMode = options ~= nil and options.EditMode == true
 
 	if Config.Lighting.ReplaceExistingEffects then
 		local stash = ServerStorage:FindFirstChild("SicilyReplacedLighting")
@@ -243,10 +247,15 @@ function LightingPreset.Apply(presetName: string?)
 	end
 
 	LightingPreset.SetLamps(preset.LampsOn)
-	CollectionService:GetInstanceAddedSignal(LightingPreset.LampTag):Connect(function(lamp)
-		setLampState(lamp, lampsOn)
-	end)
-
+	if editMode then
+		return
+	end
+	if not lampSignalConnected then
+		lampSignalConnected = true
+		CollectionService:GetInstanceAddedSignal(LightingPreset.LampTag):Connect(function(lamp)
+			setLampState(lamp, lampsOn)
+		end)
+	end
 	if Config.Lighting.DayNightCycle then
 		startDayNightCycle()
 	end

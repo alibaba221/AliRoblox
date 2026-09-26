@@ -17,6 +17,10 @@ function TerrainOps:_record(op)
 		table.insert(self.Recorder, op)
 	end
 	self.Count += 1
+	-- Big fills are slow; yield regularly so the server (or Studio's command bar) never stalls.
+	if self.Terrain and self.Count % 6 == 0 then
+		task.wait()
+	end
 end
 
 -- Axis-aligned or rotated block. Big axis-aligned blocks are split into chunks.

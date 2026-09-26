@@ -308,7 +308,7 @@ function Town.Bake(options: { [string]: any }?)
 	local model = Town.Build(options)
 	local ok, err = pcall(function()
 		local lighting = require(script.Parent.LightingPreset)
-		lighting.Apply(Config.Lighting.Preset)
+		lighting.Apply(Config.Lighting.Preset, { EditMode = true })
 	end)
 	if not ok then
 		warn("[Sicily] Lighting not applied during bake: " .. tostring(err))

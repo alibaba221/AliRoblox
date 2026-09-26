@@ -1,0 +1,36 @@
+{
+  "name": "SicilyUpgrade",
+  "tree": {
+    "$className": "Folder",
+    "Install": {
+      "$path": "tools/install/Install.luau"
+    },
+    "ReplicatedStorage": {
+      "$className": "Folder",
+      "SicilyShared": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "$className": "Folder",
+      "SicilyServer": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayerScripts": {
+      "$className": "Folder",
+      "SicilyClient": {
+        "$path": "src/client"
+      },
+      "RbxCharacterSounds": {
+        "$path": "src/overrides/RbxCharacterSounds.client.luau"
+      }
+    },
+    "StarterCharacterScripts": {
+      "$className": "Folder",
+      "Animate": {
+        "$path": "src/overrides/Animate.client.luau"
+      }
+    }
+  }
+}

@@ -141,13 +141,13 @@ end
 function Props.Bougainvillea(kit, frame: CFrame, width: number, height: number, rng)
 	local k = kit:Group("Bougainvillea")
 	-- trunk
-	k:Box(frame * CFrame.new(0, height * 0.35, 0.25), Vector3.new(0.35, height * 0.7, 0.35), Palette.Bark, M.Wood, Kit.DETAIL)
-	local clusters = math.floor(width * height / 5)
-	for _ = 1, math.clamp(clusters, 12, 38) do
+	k:Box(frame * CFrame.new(0, height * 0.3, 0.2), Vector3.new(0.22, height * 0.6, 0.22), Palette.Bark, M.Wood, Kit.DETAIL)
+	local clusters = math.floor(width * height / 3.2)
+	for _ = 1, math.clamp(clusters, 16, 44) do
 		local x = rng:Range(-width / 2, width / 2)
 		local y = height * (0.35 + 0.65 * rng:Next() ^ 0.6)
 		local droop = (1 - math.abs(x) / (width / 2 + 0.01)) * 0.2
-		local size = Vector3.new(rng:Range(1.2, 2.6), rng:Range(1, 2.2), rng:Range(0.8, 1.4))
+		local size = Vector3.new(rng:Range(0.9, 1.9), rng:Range(0.8, 1.6), rng:Range(0.6, 1.1))
 		local color = if rng:Chance(0.72) then rng:Pick(Palette.Bougainvillea) else rng:Pick(Palette.Foliage)
 		k:Blob(frame * CFrame.new(x, y - droop * height, size.Z / 2 + rng:Range(0, 0.4)), size, color, M.Grass, Kit.DETAIL)
 	end
@@ -445,7 +445,7 @@ function Props.Build(ctx, parentKit)
 		local busy = shop.Street == "Main" or shop.Street == "Piazza" or shop.Street == "Sea"
 		local food = shop.Kind == "Bar" or shop.Kind == "Food" or shop.Kind == "Gelato" or shop.Kind == "Sweets"
 		if busy and food and tables < 22 then
-			local out = if shop.Street == "Main" then 5.2 else 6
+			local out = if shop.Street == "Main" then 3.4 else 4.6
 			for i = -1, 1, 2 do
 				local p = shop.Position + shop.Normal * out + shop.Right * (i * 2.8)
 				if awayFromDoors(info, p, 3.2) then
@@ -455,7 +455,7 @@ function Props.Build(ctx, parentKit)
 							table.insert(info.Seats, seat)
 						end
 					end
-					ctx:Block(p, 3)
+					ctx:Block(p, 2.8)
 					tables += 1
 				end
 			end
