@@ -8,6 +8,7 @@
 	        require(game.ServerScriptService.SicilyServer.Town).Bake()
 	     then save the place.)
 	  4. Townsfolk NPCs + converts existing NPCs to blocky R6.
+	  5. Wild horses you can tame and ride, and saddled horses at the stable.
 
 	All settings: ReplicatedStorage.SicilyShared.Config
 ]]
@@ -17,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("SicilyShared"):WaitForChild("Config"))
 
 local Characters = require(script.Characters)
+local Horses = require(script.Horses)
 local LightingPreset = require(script.LightingPreset)
 local NPCs = require(script.NPCs)
 local Town = require(script.Town)
@@ -48,3 +50,8 @@ end
 releaseSpawns(if townInfo then townInfo.SpawnCFrames else nil)
 
 NPCs.Start(townInfo)
+
+local ok, err = pcall(Horses.Start, townInfo)
+if not ok then
+	warn("[Sicily] Horses failed to start: " .. tostring(err))
+end

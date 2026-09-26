@@ -1,0 +1,9 @@
+[
+  { "name": "h1-stand-walk", "pos": [-49.5, 4.5, 15], "target": [-49.5, 3.4, 0], "fov": 50 },
+  { "name": "h2-trot-canter", "pos": [-27.5, 4.5, 15], "target": [-27.5, 3.4, 0], "fov": 50 },
+  { "name": "h3-gallops", "pos": [-5.5, 4.5, 15], "target": [-5.5, 3.4, 0], "fov": 50 },
+  { "name": "h4-graze-rear", "pos": [16.5, 4.5, 15], "target": [16.5, 3.4, 0], "fov": 50 },
+  { "name": "h5-buck-jump", "pos": [38.5, 4.5, 15], "target": [38.5, 3.8, 0], "fov": 50 },
+  { "name": "h6-tack", "pos": [52, 6.5, 9], "target": [55, 4, 0], "fov": 50 },
+  { "name": "h7-front34", "pos": [-62, 6, 7], "target": [-55, 4, 0], "fov": 55 }
+]

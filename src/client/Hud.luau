@@ -1,6 +1,9 @@
 --[[
 	Minimal, cinematic HUD: controls hint that adapts to keyboard / gamepad / touch, a soft
 	vignette while running, an optional stamina bar and a fade-from-black on every spawn.
+
+	Other modules can show context controls (riding, gunplay) with Hud.SetContext and short
+	messages with Hud.Toast.
 ]]
 
 local Players = game:GetService("Players")
@@ -21,6 +24,10 @@ local hint: Frame?
 local vignette: Frame?
 local staminaBar: Frame?
 local hintDismissed = false
+local contextPanel: Frame?
+local contexts = {} -- [name] = { Priority, Rows }
+local toastFrame: Frame?
+local toastToken = 0
 
 local CREAM = Color3.fromRGB(246, 236, 214)
 local INK = Color3.fromRGB(24, 20, 18)
@@ -129,7 +136,7 @@ local function refreshHint()
 	if lock then
 		(lock :: Frame).Visible = not gamepad
 	end
-	hint.Visible = not touch and not hintDismissed and hint:GetAttribute("Shown") == true
+	hint.Visible = not touch and not hintDismissed and hint:GetAttribute("Shown") == true and next(contexts) == nil
 end
 
 local function buildVignette()
@@ -184,6 +191,91 @@ local function buildStamina()
 	return back
 end
 
+-- "keyboard" | "gamepad" | "touch" for the device the player is using right now.
+function Hud.Device(): string
+	local lastInput = UserInputService:GetLastInputType()
+	if lastInput == Enum.UserInputType.Touch then
+		return "touch"
+	elseif string.find(lastInput.Name, "Gamepad") then
+		return "gamepad"
+	end
+	return "keyboard"
+end
+
+local function rebuildContext()
+	if not contextPanel then
+		return
+	end
+	for _, child in contextPanel:GetChildren() do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	local best = nil
+	for _, context in contexts do
+		if not best or context.Priority > best.Priority then
+			best = context
+		end
+	end
+	local device = Hud.Device()
+	contextPanel.Visible = best ~= nil and device ~= "touch"
+	if hint then
+		hint.Visible = best == nil and hint.Visible
+	end
+	if not best then
+		refreshHint()
+		return
+	end
+	for i, row in best.Rows do
+		local keys = row.Keys
+		local key = if device == "gamepad" then keys.Gamepad elseif device == "touch" then keys.Touch else keys.Keyboard
+		if key then
+			keyRow(contextPanel, key, row.Action, i)
+		end
+	end
+end
+
+--[[
+	Shows a set of control hints while something is going on (riding, a weapon drawn...).
+	rows = { { Keys = { Keyboard = "SHIFT", Gamepad = "L3", Touch = "RUN" }, Action = "Gallop" }, ... }
+	The highest priority context wins; pass rows = nil to remove.
+]]
+function Hud.SetContext(name: string, priority: number, rows: { any }?)
+	contexts[name] = if rows then { Priority = priority, Rows = rows } else nil
+	rebuildContext()
+end
+
+-- A short message at the top of the screen.
+function Hud.Toast(text: string, duration: number?, color: Color3?)
+	if not toastFrame then
+		return
+	end
+	toastToken += 1
+	local token = toastToken
+	local label = toastFrame:FindFirstChild("Text") :: TextLabel
+	label.Text = text
+	label.TextColor3 = color or CREAM
+	toastFrame.Visible = true
+	toastFrame.BackgroundTransparency = 0.3
+	label.TextTransparency = 0
+	toastFrame.Position = UDim2.new(0.5, 0, 0, 92)
+	TweenService:Create(toastFrame, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0, 100),
+	}):Play()
+	task.delay(duration or 2.6, function()
+		if toastToken ~= token then
+			return
+		end
+		TweenService:Create(toastFrame, TweenInfo.new(0.4), { BackgroundTransparency = 1 }):Play()
+		local fadeText = TweenService:Create(label, TweenInfo.new(0.4), { TextTransparency = 1 })
+		fadeText:Play()
+		fadeText.Completed:Wait()
+		if toastToken == token then
+			toastFrame.Visible = false
+		end
+	end)
+end
+
 function Hud.Fade(toTransparency: number, duration: number)
 	local tween = TweenService:Create(
 		fade,
@@ -231,6 +323,51 @@ function Hud.Start(movement)
 		hint = buildHint()
 		UserInputService.LastInputTypeChanged:Connect(refreshHint)
 	end
+
+	local panel = Instance.new("Frame")
+	panel.Name = "ContextHint"
+	panel.AnchorPoint = Vector2.new(0, 1)
+	panel.Position = UDim2.new(0, 22, 1, -22)
+	panel.AutomaticSize = Enum.AutomaticSize.XY
+	panel.BackgroundColor3 = INK
+	panel.BackgroundTransparency = 0.35
+	panel.Visible = false
+	panel.Parent = gui
+	corner(panel, 10)
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 10)
+	pad.PaddingBottom = UDim.new(0, 10)
+	pad.PaddingLeft = UDim.new(0, 12)
+	pad.PaddingRight = UDim.new(0, 14)
+	pad.Parent = panel
+	local layout = Instance.new("UIListLayout")
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, 6)
+	layout.Parent = panel
+	contextPanel = panel
+	UserInputService.LastInputTypeChanged:Connect(rebuildContext)
+
+	local toast = Instance.new("Frame")
+	toast.Name = "Toast"
+	toast.AnchorPoint = Vector2.new(0.5, 0)
+	toast.Position = UDim2.new(0.5, 0, 0, 100)
+	toast.AutomaticSize = Enum.AutomaticSize.XY
+	toast.BackgroundColor3 = INK
+	toast.BackgroundTransparency = 1
+	toast.Visible = false
+	toast.ZIndex = 20
+	toast.Parent = gui
+	corner(toast, 14)
+	local toastPad = Instance.new("UIPadding")
+	toastPad.PaddingTop = UDim.new(0, 8)
+	toastPad.PaddingBottom = UDim.new(0, 8)
+	toastPad.PaddingLeft = UDim.new(0, 18)
+	toastPad.PaddingRight = UDim.new(0, 18)
+	toastPad.Parent = toast
+	local toastText = label(toast, "", 20, Enum.Font.GothamMedium)
+	toastText.Name = "Text"
+	toastText.ZIndex = 21
+	toastFrame = toast
 	if Config.Hud.RunVignette then
 		vignette = buildVignette()
 	end

@@ -6,8 +6,9 @@
 	always matches the actual speed, so walking/running never looks like ice-skating.
 
 	States: idle (breathing, weight shift), walk, run (lean + arm pump), jump, fall (arms out,
-	flail on long falls), landing dip, climb, swim, sit, tool hold, lean into turns, head look.
-	NPC poses via the "Pose" attribute: "Sit", "Vendor", "Chat", "Lean", "Fish".
+	flail on long falls), landing dip, climb, swim, sit, tool hold, lean into turns, head look,
+	riding a horse (climbing on, seated with the saddle's motion, posting trot, two-point gallop,
+	stepping off). NPC poses via the "Pose" attribute: "Sit", "Vendor", "Chat", "Lean", "Fish".
 
 	If another script plays an Action-priority AnimationTrack on a rig (e.g. a sword swing), the
 	upper body is left to that animation and only the legs keep walking.
@@ -21,6 +22,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("SicilyShared")
 local Config = require(Shared:WaitForChild("Config"))
+local HorseMount = require(Shared:WaitForChild("HorseMount"))
 local R6 = require(Shared:WaitForChild("R6"))
 local Spring = require(Shared:WaitForChild("Spring"))
 
@@ -37,6 +39,9 @@ local ACTION_PRIORITIES = {
 }
 
 local localPlayer = Players.LocalPlayer
+local SEAT = HorseMount.SeatOffset()
+local ROOT_C0 = R6.Joints[1].C0
+local horseAnimator = nil -- set in Start (HorseAnimator module), gives us the saddle's motion
 local rigs = {}
 local footstepListeners = {}
 local landListeners = {}
@@ -110,7 +115,9 @@ local function blankState()
 		Speed = 0,
 		Forward = 1,
 		Side = 0,
-		Weights = { Ground = 1, Air = 0, Climb = 0, Swim = 0, Sit = 0 },
+		Weights = { Ground = 1, Air = 0, Climb = 0, Swim = 0, Sit = 0, Ride = 0 },
+		RidePost = 0,
+		RideLean = 0,
 		AirTime = 0,
 		WasAir = false,
 		MinVY = 0,
@@ -246,23 +253,31 @@ local function solveRig(rig, sample, dt: number, now: number, cameraCFrame: CFra
 		airborne, climbing, swimming = false, false, false
 	end
 
+	local riding = sample.Riding
+	if riding then
+		seated, climbing, swimming, airborne = false, false, false, false
+	end
 	local targets = rig.Weights
+	local wantRide = if riding then 1 else 0
 	local wantSit = if seated then 1 else 0
 	local wantClimb = if not seated and climbing then 1 else 0
 	local wantSwim = if not seated and not climbing and swimming then 1 else 0
 	local wantAir = if not seated and not climbing and not swimming and airborne then 1 else 0
-	local wantGround = 1 - wantSit - wantClimb - wantSwim - wantAir
+	local wantGround = 1 - wantSit - wantClimb - wantSwim - wantAir - wantRide
+	targets.Ride = approach(targets.Ride, wantRide, if riding then 14 else 9, dt)
 	targets.Sit = approach(targets.Sit, wantSit, 10, dt)
 	targets.Climb = approach(targets.Climb, wantClimb, 12, dt)
 	targets.Swim = approach(targets.Swim, wantSwim, 8, dt)
 	targets.Air = approach(targets.Air, wantAir, if wantAir > 0 then 14 else 18, dt)
 	targets.Ground = approach(targets.Ground, wantGround, 16, dt)
-	local total = targets.Sit + targets.Climb + targets.Swim + targets.Air + targets.Ground
+	local total = targets.Sit + targets.Climb + targets.Swim + targets.Air + targets.Ground + targets.Ride
 	local wSit, wClimb, wSwim = targets.Sit / total, targets.Climb / total, targets.Swim / total
-	local wAir, wGround = targets.Air / total, targets.Ground / total
+	local wAir, wGround, wRide = targets.Air / total, targets.Ground / total, targets.Ride / total
 
 	-- Landing ---------------------------------------------------------------------------------
-	if airborne then
+	if riding then
+		rig.AirTime, rig.MinVY, rig.WasAir = 0, 0, false
+	elseif airborne then
 		rig.AirTime += dt
 		rig.MinVY = math.min(rig.MinVY, velocity.Y)
 	else
@@ -446,6 +461,80 @@ local function solveRig(rig, sample, dt: number, now: number, cameraCFrame: CFra
 		end
 	end
 
+	-- Riding ------------------------------------------------------------------------------------------
+	if wRide > 0.001 then
+		local w = wRide
+		local phaseName = if riding then riding.Phase else "Seated"
+		local u = if riding then riding.Progress else 1
+		local gait = riding and riding.Gait
+		-- seated: thighs forward and around the barrel, hands low on the reins
+		local seat = 1
+		if phaseName == "Mount" then
+			seat = smoothstep(0.7, 1, u)
+		elseif phaseName == "Dismount" then
+			seat = 1 - smoothstep(0, 0.45, u)
+		end
+		local weights = gait and gait.Weights or { 1, 0, 0, 0 }
+		local moving = gait and gait.Moving or 0
+		local gaitPhase = gait and gait.Phase or 0
+		local trot, canter, gallop = weights[2] * moving, weights[3] * moving, weights[4] * moving
+		-- posting at the trot: rise and sit with each diagonal pair
+		rig.RidePost = approach(rig.RidePost, trot, 6, dt)
+		rig.RideLean = approach(rig.RideLean, gallop * 0.9 + canter * 0.35, 4, dt)
+		local post = rig.RidePost * math.max(0, math.sin(TAU * 2 * gaitPhase + 0.8)) * 0.3
+		local lean = rig.RideLean
+		pose.RLegSwing += w * seat * (0.52 + 0.1 * lean)
+		pose.LLegSwing += w * seat * (0.52 + 0.1 * lean)
+		pose.RLegSpread += w * seat * 0.5
+		pose.LLegSpread += w * seat * 0.5
+		pose.RootUp += w * seat * (post + lean * 0.22 - 0.02)
+		pose.RootPitch += w * seat * (0.06 + lean * 0.42 + rig.RidePost * 0.12)
+		pose.NeckPitch -= w * seat * lean * 0.3
+		pose.RArmSwing += w * seat * (0.62 + lean * 0.35)
+		pose.LArmSwing += w * seat * (0.62 + lean * 0.35)
+		pose.RArmSpread += w * seat * -0.2
+		pose.LArmSpread += w * seat * -0.2
+		-- small counter-sway with the canter / gallop rock
+		pose.RootPitch += w * seat * (canter + gallop) * 0.05 * math.sin(TAU * gaitPhase + 1.2)
+		if riding and riding.Tame then
+			-- hanging on to a bucking horse
+			local s = riding.Tame
+			pose.RootPitch += w * (-s.Rear * 0.45 + s.Buck * 0.35)
+			pose.RArmSwing += w * (0.3 + s.Intensity * 0.3)
+			pose.LArmSwing += w * (0.3 + s.Intensity * 0.3)
+			pose.RootRoll += w * s.Shake * 0.08
+			pose.NeckPitch += w * s.Buck * 0.2
+		end
+		if phaseName == "Mount" then
+			local k = 1 - seat
+			if u < 0.35 then
+				-- stepping in beside the horse
+				local stepPhase = math.sin(u / 0.35 * math.pi * 2)
+				pose.RLegSwing += w * k * 0.35 * stepPhase
+				pose.LLegSwing -= w * k * 0.35 * stepPhase
+				pose.RArmSwing += w * k * 0.4
+				pose.LArmSwing += w * k * 0.9
+			else
+				-- foot in the stirrup, swing the other leg up and over
+				local swing = math.sin(math.clamp((u - 0.35) / 0.55, 0, 1) * math.pi)
+				pose.LLegSwing += w * k * 1.1
+				pose.RLegSpread += w * k * (0.3 + 1.1 * swing)
+				pose.RLegSwing += w * k * 0.4 * swing
+				pose.RootPitch += w * k * 0.35
+				pose.RArmSwing += w * k * 1.2
+				pose.LArmSwing += w * k * 1.35
+			end
+		elseif phaseName == "Dismount" then
+			local k = 1 - seat
+			local swing = math.sin(math.clamp(u / 0.7, 0, 1) * math.pi)
+			pose.RLegSpread += w * k * 0.9 * swing
+			pose.LLegSwing += w * k * 0.5 * swing
+			pose.RArmSwing += w * k * 0.9 * swing
+			pose.LArmSwing += w * k * 0.9 * swing
+			pose.RootPitch += w * k * 0.2 * swing
+		end
+	end
+
 	-- Landing dip (additive, springy) ------------------------------------------------------------
 	local dip = math.min(rig.Land:Step(dt), 0.05)
 	if math.abs(dip) > 1e-3 then
@@ -502,7 +591,7 @@ local function solveRig(rig, sample, dt: number, now: number, cameraCFrame: CFra
 	pose.NeckPitch += rig.HeadPitch
 
 	-- Footsteps -----------------------------------------------------------------------------------
-	if wGround > 0.6 and walkAmt > 0.35 then
+	if wGround > 0.6 and walkAmt > 0.35 and not riding then
 		local stepIndex = math.floor((rig.PhaseTotal - HALF_PI) / math.pi)
 		if rig.LastStep ~= nil and stepIndex ~= rig.LastStep then
 			fire(footstepListeners, rig, if stepIndex % 2 == 0 then "Right" else "Left", s, runAmt)
@@ -524,9 +613,15 @@ local function solveRig(rig, sample, dt: number, now: number, cameraCFrame: CFra
 	-- Apply -----------------------------------------------------------------------------------------
 	local motors = rig.Motors
 	local upperBodyFree = not rig.External
+	local rootTransform = CFrame.new(0, -pose.RootFwd, pose.RootUp) * CFrame.Angles(pose.RootPitch, -pose.RootRoll, pose.RootYaw)
+	if riding and riding.Saddle then
+		-- move with the saddle as the horse's body bobs and pitches
+		rootTransform = ROOT_C0:Inverse() * riding.Saddle * ROOT_C0 * rootTransform
+	end
 	if upperBodyFree and motors.RootJoint then
-		motors.RootJoint.Transform = CFrame.new(0, -pose.RootFwd, pose.RootUp)
-			* CFrame.Angles(pose.RootPitch, -pose.RootRoll, pose.RootYaw)
+		motors.RootJoint.Transform = rootTransform
+	elseif motors.RootJoint and riding and riding.Saddle then
+		motors.RootJoint.Transform = ROOT_C0:Inverse() * riding.Saddle * ROOT_C0
 	end
 	if upperBodyFree and motors.Neck then
 		motors.Neck.Transform = CFrame.Angles(pose.NeckPitch, -pose.NeckRoll, pose.NeckYaw)
@@ -578,6 +673,29 @@ local function updateRig(rig, dt: number, now: number, cameraCFrame: CFrame)
 		checkExternalAnimation(rig)
 	end
 
+	-- On a horse: animate the saddle joint (climbing on / stepping off) and follow the saddle.
+	local riding = nil
+	local saddleJoint = root:FindFirstChild(HorseMount.JointName)
+	if saddleJoint and saddleJoint:IsA("Motor6D") and saddleJoint.Enabled then
+		local transform, phase, progress = HorseMount.JointTransform(saddleJoint, Workspace:GetServerTimeNow())
+		saddleJoint.Transform = transform
+		local horse = saddleJoint.Part0 and saddleJoint.Part0.Parent
+		local gait, tame = nil, nil
+		if horseAnimator and horse then
+			gait, tame = horseAnimator.GetState(horse)
+		end
+		local saddle = nil
+		if gait then
+			local blend = if phase == "Seated"
+				then 1
+				elseif phase == "Mount" then smoothstep(0.6, 1, progress)
+				else 1 - smoothstep(0, 0.4, progress)
+			saddle = CFrame.new():Lerp(SEAT:Inverse() * gait.BodyTransform * SEAT, blend)
+		end
+		riding = { Phase = phase, Progress = progress, Gait = gait, Saddle = saddle, Horse = horse, Tame = tame }
+	end
+	rig.Riding = riding
+
 	local anchored = root.Anchored
 	solveRig(rig, {
 		Velocity = if anchored then Vector3.zero else root.AssemblyLinearVelocity,
@@ -585,6 +703,7 @@ local function updateRig(rig, dt: number, now: number, cameraCFrame: CFrame)
 		Anchored = anchored,
 		State = humanoid:GetState(),
 		Sit = humanoid.Sit,
+		Riding = riding,
 	}, dt, now, cameraCFrame)
 end
 
@@ -645,10 +764,11 @@ end
 
 local warned = {}
 
-function Animator.Start()
+function Animator.Start(horses)
 	if not Config.Animation.Enabled then
 		return
 	end
+	horseAnimator = horses
 	for _, model in CollectionService:GetTagged(R6.Tag) do
 		register(model)
 	end
@@ -673,6 +793,14 @@ function Animator.Start()
 		local now = os.clock()
 		local camera = Workspace.CurrentCamera
 		local cameraCFrame = if camera then camera.CFrame else CFrame.new()
+		-- horses first: riders follow their saddle's motion from this frame
+		if horseAnimator then
+			local ok, err = pcall(horseAnimator.Step, dt, cameraCFrame.Position)
+			if not ok and not warned.Horses then
+				warned.Horses = true
+				warn("[Sicily] Horse animator error: " .. tostring(err))
+			end
+		end
 		for model, rig in rigs do
 			local ok, err = pcall(updateRig, rig, dt, now, cameraCFrame)
 			if not ok then

@@ -82,6 +82,9 @@ local function isBuildable(x: number, z: number): boolean
 	if math.abs(x - c.Center.X) < c.HalfX + 10 and math.abs(z - c.Center.Z) < c.HalfZ + 10 then
 		return false
 	end
+	if Plan.InRect(Plan.Stable, x, z, 4) or Plan.InRect(Plan.Range, x, z, 4) then
+		return false
+	end
 	return true
 end
 Landscape.IsBuildable = isBuildable

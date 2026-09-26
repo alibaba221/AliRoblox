@@ -1,0 +1,5 @@
+[
+  { "name": "stable-range", "pos": [-96, 30, 118], "target": [-132, 12, 58], "fov": 60 },
+  { "name": "range-close", "pos": [-124, 17, 62], "target": [-131, 13, 24], "fov": 60 },
+  { "name": "stable-close", "pos": [-120, 18, 58], "target": [-132, 13, 92], "fov": 60 }
+]

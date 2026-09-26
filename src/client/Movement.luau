@@ -55,6 +55,8 @@ local state = {
 	MinVY = 0,
 	LastProcess = os.clock(),
 	LastHook = 0,
+	RawInput = Vector3.zero, -- this frame's unsmoothed move input (world space, camera-relative applied)
+	RawInputAt = 0,
 }
 Movement.State = state
 
@@ -88,7 +90,9 @@ local function isLocked(humanoid: Humanoid): boolean
 end
 
 local function smoothInput(humanoid: Humanoid, moveVector: Vector3, cameraRelative: boolean, dt: number): Vector3
-	local input = if isLocked(humanoid) then Vector3.zero else toWorld(moveVector, cameraRelative)
+	state.RawInput = toWorld(moveVector, cameraRelative)
+	state.RawInputAt = os.clock()
+	local input = if isLocked(humanoid) then Vector3.zero else state.RawInput
 	local current = state.Smoothed
 	local rate = if input.Magnitude >= current.Magnitude then settings.Acceleration else settings.Deceleration
 	local smoothed = current:Lerp(input, 1 - math.exp(-rate * dt))
@@ -457,6 +461,25 @@ function Movement.SetInputEnabled(enabled: boolean)
 			end
 		end)
 	end
+end
+
+-- The player's current move input (world space, magnitude 0..1), e.g. for steering a horse.
+-- Falls back to the humanoid's MoveDirection when the PlayerModule hook isn't available.
+function Movement.GetMoveInput(): Vector3
+	if os.clock() - state.RawInputAt < 0.25 then
+		return state.RawInput
+	end
+	local humanoid = state.Humanoid
+	if humanoid then
+		local direction = humanoid.MoveDirection
+		return Vector3.new(direction.X, 0, direction.Z)
+	end
+	return Vector3.zero
+end
+
+-- Is the Run input (Shift / L3 toggle / RUN button) active?
+function Movement.RunHeld(): boolean
+	return state.SprintHeld or state.SprintToggle
 end
 
 function Movement.OnLanded(callback: (fallSpeed: number) -> ())

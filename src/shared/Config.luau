@@ -160,6 +160,50 @@ Config.Hud = {
 	SpawnFade = true,
 }
 
+-- Horses --------------------------------------------------------------------------
+-- Horse stats (speeds, turning, stamina, taming difficulty) and coats: SicilyShared.HorseTypes
+Config.Horses = {
+	Enabled = true,
+
+	-- Wild herds roaming open country. Center is (x, z) on the map; each horse picks a random
+	-- coat unless Coats is given. Temperament: "Calm" (easy to tame), "Spirited", "Wild" (hard).
+	Herds = {
+		{ Name = "Piana del Castello", Center = Vector2.new(-192, -186), Radius = 42, Count = 3, Temperament = "Spirited" },
+		{ Name = "Prato di Levante", Center = Vector2.new(200, -206), Radius = 45, Count = 3, Temperament = "Calm" },
+		{ Name = "Colle Est", Center = Vector2.new(280, -40), Radius = 28, Count = 2, Temperament = "Wild" },
+		{ Name = "Piana Ovest", Center = Vector2.new(-398, -275), Radius = 55, Count = 2, Temperament = "Wild" },
+	},
+
+	-- Saddled horses at the stable by the west gate. Anyone can ride them, no taming needed.
+	StableHorses = 2,
+	StableCoats = { "Bay", "Grey" },
+
+	RespawnTime = 75, -- a lost wild horse (fell in the sea, stuck, tamed then abandoned) is replaced
+	AbandonTime = 150, -- a tamed horse left alone this long (owner gone/far) returns to its herd/stable
+	MountDistance = 9, -- studs from the saddle to show "Mount"
+
+	-- Controls (keyboard / gamepad). Mount uses a ProximityPrompt; E again to dismount.
+	MountKey = Enum.KeyCode.E,
+	MountGamepadKey = Enum.KeyCode.ButtonY,
+	CallKey = Enum.KeyCode.H, -- whistle: your horse comes to you
+	CallGamepadKey = Enum.KeyCode.DPadUp,
+	CallRange = 400,
+	-- Keyboard W is a trot; hold Shift (L3 / RUN on mobile) to gallop. Hold Alt to walk.
+	WalkKeys = { Enum.KeyCode.LeftAlt, Enum.KeyCode.RightAlt },
+
+	-- Camera while riding
+	CameraExtraDistance = 4.5, -- pulled back a little so the whole horse is in view
+	GallopFOV = 84,
+	AutoFollow = true, -- camera swings in behind the horse when you stop steering it
+	AutoFollowDelay = 1.3, -- seconds after your last camera input
+	AutoFollowSpeed = 1.6,
+
+	-- Hooves / snorts. Leave "" for the built-in approximation (pitched footsteps).
+	HoofSoundId = "",
+	SnortSoundId = "",
+	NeighSoundId = "",
+}
+
 -- Audio ---------------------------------------------------------------------------
 Config.Audio = {
 	Footsteps = true,

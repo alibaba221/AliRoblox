@@ -39,6 +39,29 @@ function Random:NextInteger(low: number, high: number): number
 end
 Harness.Random = Random
 
+-- RaycastParams / OverlapParams are plain data in Lune tests (no physics to query).
+local function paramsClass()
+	local class = {}
+	class.__index = class
+	function class.new()
+		return setmetatable({
+			FilterDescendantsInstances = {},
+			FilterType = roblox.Enum.RaycastFilterType.Exclude,
+			IgnoreWater = false,
+			RespectCanCollide = false,
+			CollisionGroup = "Default",
+		}, class)
+	end
+	function class:AddToFilter(instances)
+		for _, instance in (if type(instances) == "table" then instances else { instances }) do
+			table.insert(self.FilterDescendantsInstances, instance)
+		end
+	end
+	return class
+end
+local RaycastParams = paramsClass()
+local OverlapParams = paramsClass()
+
 function Harness.load(placePath: string)
 	local game = roblox.deserializePlace(fs.readFile(placePath))
 	local cache = {}
@@ -69,6 +92,10 @@ function Harness.load(placePath: string)
 			ColorSequenceKeypoint = roblox.ColorSequenceKeypoint,
 			Region3 = roblox.Region3,
 			Font = roblox.Font,
+			PhysicalProperties = roblox.PhysicalProperties,
+			RaycastParams = RaycastParams,
+			OverlapParams = OverlapParams,
+			Rect = roblox.Rect,
 			Random = Random,
 			task = task,
 			typeof = typeof,

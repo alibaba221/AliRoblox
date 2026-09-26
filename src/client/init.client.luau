@@ -1,6 +1,6 @@
 --[[
-	SicilyClient — premium movement, cinematic camera, procedural R6 animation, character sounds,
-	HUD and the opening flyover. All settings: ReplicatedStorage.SicilyShared.Config
+	SicilyClient — premium movement, cinematic camera, procedural R6 and horse animation, riding,
+	character sounds, HUD and the opening flyover. All settings: ReplicatedStorage.SicilyShared.Config
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,9 +9,11 @@ local Config = require(ReplicatedStorage:WaitForChild("SicilyShared"):WaitForChi
 
 local Animator = require(script.Animator)
 local CameraFX = require(script.CameraFX)
+local HorseAnimator = require(script.HorseAnimator)
 local Hud = require(script.Hud)
 local Intro = require(script.Intro)
 local Movement = require(script.Movement)
+local Riding = require(script.Riding)
 local Sounds = require(script.Sounds)
 
 local function start(name: string, fn: (...any) -> (), ...: any)
@@ -21,11 +23,13 @@ local function start(name: string, fn: (...any) -> (), ...: any)
 	end
 end
 
-start("Animator", Animator.Start)
+start("HorseAnimator", HorseAnimator.Start)
+start("Animator", Animator.Start, HorseAnimator)
 start("Movement", Movement.Start)
 start("Hud", Hud.Start, Movement)
 start("CameraFX", CameraFX.Start, Movement, Animator)
 start("Sounds", Sounds.Start, Animator)
+start("Riding", Riding.Start, Movement, Hud)
 
 if Config.Intro.Enabled then
 	task.spawn(Intro.Play, Movement, Hud)

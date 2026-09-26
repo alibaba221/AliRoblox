@@ -1,0 +1,6 @@
+[
+  { "name": "riders-a", "pos": [-22, 6, 57], "target": [-22, 5, 40], "fov": 55 },
+  { "name": "riders-b", "pos": [0, 6, 57], "target": [0, 5, 40], "fov": 55 },
+  { "name": "riders-c", "pos": [22, 6, 57], "target": [22, 5, 40], "fov": 55 },
+  { "name": "rider-34", "pos": [-33, 9, 50], "target": [-27.5, 5.5, 40], "fov": 50 }
+]

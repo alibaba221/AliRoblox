@@ -92,6 +92,9 @@ Plan.Bridge = { X = -185, Z0 = 59, Z1 = 69, ArchRadius = 18, Springing = -12, Ha
 Plan.CountryRoad = { Z0 = 60, Z1 = 68, X0 = -300, X1 = -112 }
 Plan.Shrine = V(-224, 0, 54)
 Plan.Farm = V(-280, 0, 10)
+-- Stable (saddled horses anyone can ride) and shooting range, either side of the road by the west gate.
+Plan.Stable = { X0 = -146, X1 = -116, Z0 = 74, Z1 = 100 }
+Plan.Range = { X0 = -146, X1 = -116, Z0 = 14, Z1 = 52 }
 Plan.Castle = { Center = V(-140, 70, -330), HalfX = 34, HalfZ = 28 } -- courtyard floor at Center.Y - 2
 Plan.Bounds = { X0 = -470, X1 = 430, Z0 = -540, Z1 = 600 }
 

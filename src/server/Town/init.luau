@@ -56,6 +56,10 @@ function Context.new(options)
 		Blocked = {}, -- { {Center = Vector3, Radius = number} } areas NPCs shouldn't path through
 		Shops = {},
 		Doors = {},
+		StableSlots = {}, -- where the stable's saddled horses stand
+		RangeBottles = {}, -- shooting range targets (managed by the combat system at runtime)
+		RangeCans = {},
+		AmmoCrates = {},
 	}
 	return self
 end
@@ -85,7 +89,18 @@ function Town.GetBuilt(): Model?
 end
 
 -- Info <-> instances (so a baked town still knows its spawns, NPC routes and camera shots).
-local LIST_KEYS = { "SpawnCFrames", "Vendors", "Seats", "Leans", "Fish", "Shots" }
+local LIST_KEYS = {
+	"SpawnCFrames",
+	"Vendors",
+	"Seats",
+	"Leans",
+	"Fish",
+	"Shots",
+	"StableSlots",
+	"RangeBottles",
+	"RangeCans",
+	"AmmoCrates",
+}
 
 function Town.WriteData(model: Model, info)
 	local data = Instance.new("Configuration")
@@ -128,6 +143,10 @@ function Town.ReadData(model: Model)
 		Fish = {},
 		Shots = {},
 		Chats = {},
+		StableSlots = {},
+		RangeBottles = {},
+		RangeCans = {},
+		AmmoCrates = {},
 		Nav = { Nodes = {}, Edges = {} },
 	}
 	local data = model:FindFirstChild("TownData")

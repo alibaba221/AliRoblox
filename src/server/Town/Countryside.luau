@@ -132,6 +132,134 @@ function Countryside.Farm(_ctx, parentKit, rng)
 	local _ = rng
 end
 
+-- Post-and-rail fence between two points (two rails), following the ground.
+local function railFence(kit, a: Vector2, b: Vector2)
+	local length = (b - a).Magnitude
+	local posts = math.max(1, math.ceil(length / 4))
+	for i = 0, posts do
+		local p = a:Lerp(b, i / posts)
+		kit:Post(Vector3.new(p.X, ground(p.X, p.Y) - 0.4, p.Y), 4, 0.45, Palette.WoodDark, M.Wood)
+	end
+	for _, h in { 1.3, 2.9 } do
+		local y0 = ground(a.X, a.Y) + h
+		local y1 = ground(b.X, b.Y) + h
+		kit:Beam(Vector3.new(a.X, y0, a.Y), Vector3.new(b.X, y1, b.Y), 0.3, Palette.Wood, M.WoodPlanks, Kit.SOLID)
+	end
+end
+
+--[[
+	La stalla: a paddock by the west gate with an open-sided shelter, hay, a water trough and a
+	hitching rail. Saddled horses wait here for anyone to ride (Info.StableSlots).
+]]
+function Countryside.Stable(ctx, parentKit)
+	local kit, model = parentKit:Group("Stalla")
+	model:SetAttribute("SicilyStable", true)
+	local s = Plan.Stable
+	local y = ground((s.X0 + s.X1) / 2, (s.Z0 + s.Z1) / 2)
+	-- paddock fence with a wide opening towards the road (north side)
+	railFence(kit, Vector2.new(s.X0, s.Z0), Vector2.new(s.X0 + 9, s.Z0))
+	railFence(kit, Vector2.new(s.X1 - 9, s.Z0), Vector2.new(s.X1, s.Z0))
+	railFence(kit, Vector2.new(s.X0, s.Z0), Vector2.new(s.X0, s.Z1))
+	railFence(kit, Vector2.new(s.X1, s.Z0), Vector2.new(s.X1, s.Z1))
+	-- shelter against a stone back wall
+	local wallZ = s.Z1 - 0.6
+	kit:Box(CFrame.new((s.X0 + s.X1) / 2, y + 4, wallZ), Vector3.new(s.X1 - s.X0, 8.4, 1.2), OLD_STONE, M.Limestone)
+	local roofZ0, roofZ1 = s.Z1 - 12, s.Z1
+	for _, x in { s.X0 + 1, (s.X0 + s.X1) / 2, s.X1 - 1 } do
+		kit:Post(Vector3.new(x, y - 0.3, roofZ0 + 0.6), 8.2, 0.7, Palette.WoodDark, M.Wood)
+	end
+	kit:Box(CFrame.new((s.X0 + s.X1) / 2, y + 8, roofZ0 + 0.6), Vector3.new(s.X1 - s.X0, 0.5, 0.6), Palette.WoodDark, M.Wood)
+	local roofLength = math.sqrt((roofZ1 - roofZ0) ^ 2 + 1.6 ^ 2)
+	local roofCF = CFrame.lookAt(Vector3.new((s.X0 + s.X1) / 2, y + 8.9, (roofZ0 + roofZ1) / 2), Vector3.new((s.X0 + s.X1) / 2, y + 9.7, roofZ1))
+	kit:Box(roofCF, Vector3.new(s.X1 - s.X0 + 1.4, 0.45, roofLength + 1), Palette.Roofs[1], M.ClayRoofTiles)
+	-- hay rack, bales, water trough, feed buckets
+	kit:Box(CFrame.new((s.X0 + s.X1) / 2, y + 4.3, wallZ - 1), Vector3.new(14, 0.3, 1.6), Palette.Wood, M.WoodPlanks, Kit.DECO)
+	kit:Blob(CFrame.new((s.X0 + s.X1) / 2, y + 4.9, wallZ - 1), Vector3.new(13, 1.2, 1.5), Palette.rgb(214, 186, 104), M.Grass)
+	for i, offset in { -11, -8.2, 10.6 } do
+		kit:Box(CFrame.new((s.X0 + s.X1) / 2 + offset, y + 0.9 + (if i == 2 then 1.8 else 0), wallZ - 2.4), Vector3.new(2.6, 1.8, 1.8), Palette.rgb(212, 180, 98), M.Grass)
+	end
+	local troughCF = CFrame.new(s.X1 - 5, y + 0.9, s.Z0 + 8)
+	kit:Box(troughCF, Vector3.new(1.8, 1.8, 5.6), OLD_STONE_DARK, M.Limestone)
+	kit:Box(troughCF * CFrame.new(0, 0.82, 0), Vector3.new(1.3, 0.1, 5.1), Palette.Water, M.Glass, Kit.DETAIL)
+	-- hitching rail by the opening
+	local railZ = s.Z0 + 5
+	for _, x in { s.X0 + 6, s.X0 + 15, s.X0 + 24 } do
+		kit:Post(Vector3.new(x, y - 0.3, railZ), 3.6, 0.45, Palette.WoodDark, M.Wood)
+	end
+	kit:Beam(Vector3.new(s.X0 + 6, y + 3, railZ), Vector3.new(s.X0 + 24, y + 3, railZ), 0.35, Palette.Wood, M.Wood, Kit.DECO)
+	-- sign on the back wall
+	local sign = kit:Box(CFrame.new((s.X0 + s.X1) / 2, y + 6.6, wallZ - 0.7), Vector3.new(6, 1.4, 0.2), Palette.WoodDark, M.WoodPlanks, Kit.DECO)
+	kit:Sign(sign, Enum.NormalId.Front, "STALLA", { Color = Palette.rgb(236, 220, 180) })
+	-- where the saddled horses stand (facing the opening)
+	for _, x in { s.X0 + 10, s.X1 - 10 } do
+		table.insert(ctx.Info.StableSlots, CFrame.lookAt(Vector3.new(x, y, s.Z1 - 7), Vector3.new(x, y, s.Z0)))
+	end
+	ctx:Block(Vector3.new((s.X0 + s.X1) / 2, y, (s.Z0 + s.Z1) / 2), 14)
+end
+
+--[[
+	Tiro a segno: a shooting range across the road from the stable. Bottles on the fence posts,
+	tin cans on crates and two target boards in front of a hay backstop; a table with an ammo
+	crate on the firing line. Breakable targets are spawned by the combat system at runtime.
+]]
+function Countryside.Range(ctx, parentKit)
+	local kit, model = parentKit:Group("TiroASegno")
+	model:SetAttribute("SicilyRange", true)
+	local r = Plan.Range
+	local y = ground((r.X0 + r.X1) / 2, (r.Z0 + r.Z1) / 2)
+	local cx = (r.X0 + r.X1) / 2
+	-- hay backstop and an earth bank behind the targets
+	kit:Box(CFrame.new(cx, y + 1.6, r.Z0 + 0.5), Vector3.new(r.X1 - r.X0 + 4, 3.8, 3), Palette.rgb(132, 108, 80), M.Ground)
+	for i = 0, 8 do
+		kit:Box(CFrame.new(r.X0 + 1.8 + i * 3.4, y + 4.2, r.Z0 + 0.6), Vector3.new(3.2, 1.6, 2.2), Palette.rgb(214, 182, 100), M.Grass)
+	end
+	-- target fence with bottles on the posts
+	local fenceZ = r.Z0 + 6
+	for i = 0, 7 do
+		local x = r.X0 + 2 + i * 3.7
+		kit:Post(Vector3.new(x, y - 0.4, fenceZ), 3.7, 0.55, Palette.WoodDark, M.Wood)
+		table.insert(ctx.Info.RangeBottles, CFrame.new(x, y + 3.3, fenceZ))
+	end
+	kit:Beam(Vector3.new(r.X0 + 2, y + 2.4, fenceZ), Vector3.new(r.X0 + 2 + 7 * 3.7, y + 2.4, fenceZ), 0.3, Palette.Wood, M.WoodPlanks, Kit.SOLID)
+	-- crates with tin cans
+	for i, x in { r.X0 + 5, cx, r.X1 - 5 } do
+		local crate = CFrame.new(x, y + 1.1, fenceZ + 5 + (i % 2) * 2)
+		kit:Box(crate, Vector3.new(2.4, 2.2, 2.2), Palette.WoodPale, M.WoodPlanks)
+		for j = -1, 1, 2 do
+			table.insert(ctx.Info.RangeCans, CFrame.new(x + j * 0.6, y + 2.6, crate.Position.Z))
+		end
+	end
+	-- two target boards (painted rings) on easels
+	for _, x in { r.X0 + 9.5, r.X1 - 9.5 } do
+		local board = CFrame.new(x, y + 3.2, r.Z0 + 3.4)
+		kit:Box(board * CFrame.new(0, -1.5, 0.4) * CFrame.Angles(-0.2, 0, 0), Vector3.new(0.3, 4, 0.3), Palette.WoodDark, M.Wood)
+		kit:Box(board, Vector3.new(3.6, 3.6, 0.3), Palette.WoodPale, M.WoodPlanks)
+		local rings = { { 3.1, Palette.rgb(240, 236, 226) }, { 2.3, Palette.rgb(200, 44, 40) }, { 1.5, Palette.rgb(240, 236, 226) }, { 0.7, Palette.rgb(200, 44, 40) } }
+		for k, ring in rings do
+			kit:Cyl(board * CFrame.new(0, 0, -0.16 - k * 0.02) * CFrame.Angles(0, math.pi / 2, 0), 0.04, ring[1], ring[2], M.SmoothPlastic, Kit.DETAIL)
+		end
+	end
+	-- firing line: a table with an ammo crate, a bench, a rail to lean on
+	local lineZ = r.Z1 - 5
+	local tableCF = CFrame.new(r.X0 + 6, y + 1.7, lineZ + 1.5)
+	kit:Box(tableCF, Vector3.new(6, 0.35, 2.4), Palette.Wood, M.WoodPlanks)
+	for _, dx in { -2.6, 2.6 } do
+		for _, dz in { -0.9, 0.9 } do
+			kit:Box(tableCF * CFrame.new(dx, -0.95, dz), Vector3.new(0.35, 1.7, 0.35), Palette.WoodDark, M.Wood, Kit.DECO)
+		end
+	end
+	local crate = kit:Box(tableCF * CFrame.new(1, 0.72, 0), Vector3.new(2.2, 1.1, 1.4), Palette.rgb(96, 110, 62), M.WoodPlanks)
+	kit:Sign(crate, Enum.NormalId.Front, "MUNIZIONI", { Color = Palette.rgb(236, 226, 196) })
+	table.insert(ctx.Info.AmmoCrates, crate.CFrame)
+	kit:Beam(Vector3.new(r.X0 + 11, y + 2.8, lineZ), Vector3.new(r.X1 - 1, y + 2.8, lineZ), 0.3, Palette.Wood, M.Wood, Kit.DECO)
+	for x = r.X0 + 11, r.X1 - 1, 5 do
+		kit:Post(Vector3.new(x, y - 0.3, lineZ), 3.3, 0.4, Palette.WoodDark, M.Wood, Kit.DECO)
+	end
+	local sign = kit:Box(CFrame.new(r.X1 - 3, y + 3.6, r.Z1 - 1) * CFrame.Angles(0, math.pi, 0), Vector3.new(5, 1.3, 0.2), Palette.WoodDark, M.WoodPlanks, Kit.DECO)
+	kit:Sign(sign, Enum.NormalId.Front, "TIRO A SEGNO", { Color = Palette.rgb(236, 220, 180) })
+	kit:Post(Vector3.new(r.X1 - 3, y - 0.3, r.Z1 - 1), 3, 0.3, Palette.WoodDark, M.Wood, Kit.DECO)
+end
+
 -- Dry-stone wall following the ground between two points.
 local function dryWall(kit, a: Vector2, b: Vector2, rng)
 	local length = (b - a).Magnitude
@@ -272,6 +400,8 @@ function Countryside.Build(ctx, parentKit)
 	Countryside.Shrine(ctx, kit)
 	Countryside.Farm(ctx, kit, rng)
 	Countryside.Castle(ctx, kit)
+	Countryside.Stable(ctx, kit)
+	Countryside.Range(ctx, kit)
 
 	-- Olive groves in rows around the farm and west of the valley.
 	local planted = 0
@@ -308,9 +438,9 @@ function Countryside.Build(ctx, parentKit)
 	-- Dry-stone walls along the country road.
 	local road = Plan.CountryRoad
 	local valleyWest = Plan.Bridge.X - Plan.Bridge.HalfLength
+	-- (between the bridge and the town gate the road opens onto the stable and the shooting range)
 	for _, z in { road.Z0 - 1.5, road.Z1 + 1.5 } do
 		dryWall(kit, Vector2.new(road.X0, z), Vector2.new(valleyWest - 4, z), rng)
-		dryWall(kit, Vector2.new(Plan.Bridge.X + Plan.Bridge.HalfLength + 4, z), Vector2.new(road.X1 - 8, z), rng)
 	end
 
 	-- Cypresses and prickly pears along the castle road.
