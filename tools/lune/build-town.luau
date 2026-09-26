@@ -109,7 +109,7 @@ local function same(key)
 	local a, b = #info[key], #readBack[key]
 	assert(a == b, ("baked data mismatch for %s: %d vs %d"):format(key, a, b))
 end
-for _, key in { "SpawnCFrames", "Vendors", "Seats", "Leans", "Fish", "Shots", "Chats" } do
+for _, key in { "SpawnCFrames", "Vendors", "Seats", "Leans", "Fish", "Shots", "Chats", "StableSlots", "HitchSlots", "RangeBottles", "AmmoCrates" } do
 	same(key)
 end
 assert(#readBack.Nav.Nodes == #info.Nav.Nodes, "nav nodes round-trip")

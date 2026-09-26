@@ -661,6 +661,24 @@ function Landmarks.Build(ctx, parentKit)
 		ctx:Block(b[1], 3.4)
 	end
 
+	-- Hitching rail in the south-east of the piazza: saddled horses anyone can ride, a few steps
+	-- from where players spawn (Info.HitchSlots). They face the spawn; the street east out of
+	-- town (towards the meadow herd) stays in view past them.
+	local railZ = -34
+	for _, x in { 30, 38, 46 } do
+		kit:Post(Vector3.new(x, G - 0.3, railZ), 3.6, 0.45, Palette.WoodDark, M.Wood)
+	end
+	kit:Beam(Vector3.new(30, G + 3, railZ), Vector3.new(46, G + 3, railZ), 0.35, Palette.Wood, M.Wood, Kit.DECO)
+	local trough = CFrame.new(51, G + 0.9, -39)
+	kit:Box(trough, Vector3.new(1.8, 1.8, 4.4), Palette.rgb(176, 162, 138), M.Limestone)
+	kit:Box(trough * CFrame.new(0, 0.82, 0), Vector3.new(1.3, 0.1, 3.9), Palette.Water, M.Glass, Kit.DETAIL)
+	local board = kit:Box(CFrame.new(30, G + 4.3, railZ - 0.1) * CFrame.Angles(0, math.pi, 0), Vector3.new(3.4, 0.9, 0.15), Palette.WoodDark, M.WoodPlanks, Kit.DECO)
+	kit:Sign(board, Enum.NormalId.Front, "CAVALLI", { Color = Palette.rgb(236, 220, 180) })
+	for _, x in { 34, 42 } do
+		table.insert(ctx.Info.HitchSlots, CFrame.lookAt(Vector3.new(x, G, railZ - 5.2), Vector3.new(x, G, railZ + 10)))
+	end
+	ctx:Block(Vector3.new(40, G, railZ - 4), 9)
+
 	-- Spawns: south end of the piazza, looking at the cathedral.
 	for _, x in { -12, -4, 4, 12 } do
 		local pos = Vector3.new(x, G, -30 + math.abs(x) * 0.2)
@@ -681,7 +699,7 @@ function Landmarks.Build(ctx, parentKit)
 	end
 
 	-- Townsfolk chatting in pairs, and people leaning by the arcade.
-	for _, spot in { Vector3.new(-8, G, -40), Vector3.new(30, G, -78), Vector3.new(40, G, -36), Vector3.new(-2, G, -86) } do
+	for _, spot in { Vector3.new(-8, G, -40), Vector3.new(30, G, -78), Vector3.new(44, G, -88), Vector3.new(-2, G, -86) } do
 		local a = spot + Vector3.new(-1.6, 3, 0)
 		local b = spot + Vector3.new(1.6, 3, 0.3)
 		table.insert(ctx.Info.Chats, { CFrame.lookAt(a, b), CFrame.lookAt(b, a) })

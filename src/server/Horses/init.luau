@@ -128,6 +128,8 @@ local function objectText(record): string
 		return ("Wild %s · %s"):format(coat.DisplayName, record.Temperament.DisplayName)
 	elseif record.OwnerName then
 		return record.OwnerName .. "'s horse"
+	elseif record.Hitched then
+		return "Saddled horse · " .. coat.DisplayName
 	elseif record.Stable then
 		return "Stable horse · " .. coat.DisplayName
 	end
@@ -155,6 +157,7 @@ local function spawnHorse(options)
 	model:SetAttribute("HorseId", nextId)
 	model:SetAttribute("Temperament", temperament.Id)
 	model:SetAttribute("Wild", options.Wild)
+	model:SetAttribute("Hitched", options.Hitched or nil)
 	if not options.Wild then
 		HorseRig.AddTack(model)
 	end
@@ -189,6 +192,8 @@ local function spawnHorse(options)
 		Coat = coat,
 		Wild = options.Wild,
 		Stable = options.Stable,
+		Hitched = options.Hitched, -- tied up at the piazza's rail when nobody's riding it
+		Tied = options.Hitched,
 		Slot = options.Slot,
 		Herd = options.Herd,
 		Home = options.Home,
@@ -252,14 +257,15 @@ local function spawnWild(herd)
 	})
 end
 
-local function spawnStable(slot: CFrame, index: number)
-	local coats = settings.StableCoats or {}
+local function spawnStable(slot: CFrame, index: number, hitched: boolean?)
+	local coats = (if hitched then settings.PiazzaCoats else settings.StableCoats) or {}
 	local hit = groundAt(slot.X, slot.Z)
 	local y = if hit then hit.Position.Y else slot.Y
 	local cf = CFrame.new(slot.X, y + L.RootHeight + 0.3, slot.Z) * slot.Rotation
 	return spawnHorse({
 		Wild = false,
 		Stable = true,
+		Hitched = hitched,
 		Slot = slot,
 		Temperament = "Calm",
 		Coat = coats[(index - 1) % math.max(#coats, 1) + 1],
@@ -279,7 +285,7 @@ end
 
 -- Replace a horse later (out of sight), e.g. after it fell into the sea.
 local function scheduleRespawn(record)
-	local herd, stable, slot = record.Herd, record.Stable, record.Slot
+	local herd, stable, slot, hitched = record.Herd, record.Stable, record.Slot, record.Hitched
 	despawn(record)
 	task.delay(if stable then 5 else settings.RespawnTime, function()
 		if herd then
@@ -292,7 +298,7 @@ local function scheduleRespawn(record)
 				task.wait(5)
 			end
 		elseif stable and slot then
-			spawnStable(slot, 1)
+			spawnStable(slot, 1, hitched)
 		end
 	end)
 end
@@ -324,6 +330,8 @@ local function release(record, reason: string)
 	record.RiderCharacter = nil
 	record.Dismounting = false
 	record.Taming = nil
+	record.Tied = false
+	record.CalledBy = nil
 	local model = record.Model
 	model:SetAttribute("Rider", nil)
 	model:SetAttribute("TameSeed", nil)
@@ -470,6 +478,7 @@ function Horses.TryMount(record, player: Player)
 	end
 
 	local now = serverNow()
+	record.CalledBy = nil
 	record.Brain:Set("Hold", os.clock(), 1e9)
 	record.Motor:Halt()
 	local from = seatWorld:ToObjectSpace(root.CFrame)
@@ -587,8 +596,28 @@ local function onRequest(player: Player, action: unknown, payload: unknown)
 		local own = ownedBy[player.UserId]
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
-		if not own or not own.Model.Parent or not root then
-			notify(player, "CallFailed", "NoHorse")
+		if not root or not root:IsA("BasePart") then
+			return
+		end
+		if not own or not own.Model.Parent then
+			-- no horse of your own yet: the nearest free saddled horse trots over
+			local best, bestDistance = nil, settings.CallRange
+			for _, record in records do
+				if not record.Wild and not record.OwnerId and not record.Rider and record.Model.Parent then
+					local distance = (record.Root.Position - root.Position).Magnitude
+					if distance < bestDistance then
+						best, bestDistance = record, distance
+					end
+				end
+			end
+			if best then
+				best.Whistle = true
+				best.CalledBy = player
+				best.Tied = false
+				notify(player, "Called", best.Model, "Borrowed")
+			else
+				notify(player, "CallFailed", "NoHorse")
+			end
 			return
 		end
 		if own.Rider then
@@ -627,10 +656,10 @@ local function nearestThreat(position: Vector3)
 end
 
 local function ownerPosition(record): Vector3?
-	if not record.OwnerId then
+	local player = if record.OwnerId then Players:GetPlayerByUserId(record.OwnerId) else record.CalledBy
+	if not player or not player.Parent then
 		return nil
 	end
-	local player = Players:GetPlayerByUserId(record.OwnerId)
 	local root = player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	return if root and root:IsA("BasePart") then root.Position else nil
 end
@@ -663,6 +692,7 @@ local function thinkAll()
 						root.CFrame = CFrame.new(slot.Position + Vector3.new(0, L.RootHeight + 0.3, 0)) * slot.Rotation
 						record.Home = root.Position
 						record.HomeRadius = 5
+						record.Tied = record.Hitched
 						record.Motor:Sync()
 					end
 					record.LastRidden = now
@@ -693,6 +723,7 @@ local function thinkAll()
 			Home = record.Home,
 			HomeRadius = record.HomeRadius,
 			Wild = record.Wild,
+			Tied = record.Tied,
 			Clear = function(direction: Vector3)
 				return clearDistance(root, direction, 18)
 			end,
@@ -705,6 +736,13 @@ local function thinkAll()
 		model:SetAttribute("Graze", pose.Graze or nil)
 		model:SetAttribute("Alert", pose.Alert or nil)
 		model:SetAttribute("LookAt", pose.LookAt)
+		-- a borrowed horse that came to a whistle waits where it arrived
+		if record.CalledBy and record.Brain.State ~= "Follow" then
+			record.CalledBy = nil
+			record.Home = root.Position
+			record.HomeRadius = 6
+			record.LastRidden = now
+		end
 		-- stuck for a long time with nobody watching: pop back home
 		if record.Brain:Stuck() > 12 and not playersNear(root.Position, 80) then
 			local cf = if record.Herd then randomHerdSpot(record.Herd) else nil
@@ -735,9 +773,12 @@ function Horses.OnGunshot(position: Vector3, shooter: Player?)
 	table.insert(pendingShots, position)
 	-- ridden horses nearby flinch (the rider keeps control of a tamed horse)
 	for _, record in records do
-		if record.Rider and (record.Root.Position - position).Magnitude < 45 then
+		local distance = (record.Root.Position - position).Magnitude
+		if record.Rider and distance < 45 then
 			record.Model:SetAttribute("Startle", serverNow())
 			notify(record.Rider, "Startled", record.Model, position)
+		elseif record.Tied and distance < 45 then
+			record.Model:SetAttribute("Startle", serverNow())
 		end
 	end
 	local _ = shooter
@@ -808,6 +849,20 @@ function Horses.Start(townInfo)
 			pcall(spawnStable, slots[i], i)
 		end
 	end
+	local hitch = if townInfo then townInfo.HitchSlots else nil
+	if hitch then
+		for i = 1, math.min(settings.PiazzaHorses or 0, #hitch) do
+			local ok, err = pcall(spawnStable, hitch[i], i, true)
+			if not ok then
+				warn("[Sicily] Couldn't tie up a horse in the piazza: " .. tostring(err))
+			end
+		end
+	end
+	local count = 0
+	for _ in records do
+		count += 1
+	end
+	print(("[Sicily] %d horses out: wild herds in the meadows, saddled horses in the piazza and at the stable."):format(count))
 
 	Players.PlayerRemoving:Connect(function(player)
 		local record = riding[player]

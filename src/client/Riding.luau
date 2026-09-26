@@ -552,12 +552,12 @@ local function onHorseEvent(kind: string, ...)
 	elseif kind == "Spooked" then
 		hud.Toast("It's still skittish. Give it a moment.", 2.5)
 	elseif kind == "Called" then
-		hud.Toast("You whistle for your horse.", 2)
+		hud.Toast(if args[2] == "Borrowed" then "You whistle, and a saddled horse trots over." else "You whistle for your horse.", 2.5)
 	elseif kind == "CallFailed" then
 		local reason = args[1]
-		hud.Toast(if reason == "NoHorse" then "You don't have a horse yet. Tame a wild one!"
+		hud.Toast(if reason == "NoHorse" then "No horse can hear you. Saddled horses wait in the piazza; wild ones graze outside town."
 			elseif reason == "TooFar" then "Your horse is too far away to hear you."
-			else "Your horse is busy.", 2.8)
+			else "Your horse is busy.", 3.5)
 	end
 end
 
@@ -583,6 +583,24 @@ function Riding.Start(movementModule, hudModule)
 		task.spawn(watchCharacter, player.Character)
 	end
 	player.CharacterAdded:Connect(watchCharacter)
+
+	-- once, after the intro: where the horses are
+	task.spawn(function()
+		local gui = hud.GetGui()
+		for _ = 1, 240 do
+			if gui:GetAttribute("IntroDone") then
+				break
+			end
+			task.wait(0.5)
+		end
+		task.wait(5)
+		if not state.Horse then
+			local device = hud.Device()
+			local ride = if device == "gamepad" then "Y to ride" elseif device == "touch" then "tap to ride" else "E to ride"
+			local call = if device == "gamepad" then "D-pad up whistles one over" elseif device == "touch" then "" else "H whistles one over"
+			hud.Toast(("Saddled horses are tied up by the piazza (%s%s)."):format(ride, if call ~= "" then ", " .. call else ""), 6, Color3.fromRGB(250, 222, 140))
+		end
+	end)
 	player.CharacterRemoving:Connect(function()
 		cleanup()
 	end)

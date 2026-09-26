@@ -47,11 +47,12 @@ The countryside has **wild horses** to tame and ride, and every player carries *
 ![Townsfolk](docs/townsfolk.jpg)
 
 **Wild horses** (`src/server/Horses/`, `src/client/Riding.luau`, `HorseAnimator.luau`, `src/shared/Horse*.luau`)
-- Four herds roam the meadows outside town, each with its own temperament (Calm, Spirited, Wild) and seven coats with markings. Horses graze, wander, prick their ears when you come close and bolt from gunfire.
+- **Two saddled horses are tied up in the piazza**, a few steps from where you spawn (turn right from the cathedral view). Anyone can ride them.
+- Five herds roam the meadows outside town, each with its own temperament (Calm, Spirited, Wild) and seven coats with markings. The nearest is a calm herd just east of town: look down the street from the piazza's south-east corner. Horses graze, wander, prick their ears when you come close and bolt from gunfire.
 - **Press E to mount.** You climb on in one smooth motion; there's no teleport. The first ride on a wild horse is a taming: it bucks, spins and lunges while you **mash E** (Y / tap) to calm it. Keep the meter up and it's yours (it gets a saddle, and hearts pop up); let it slip and you're thrown off, then you can try again a moment later.
 - Riding: **W** trots where the camera looks, **Shift** gallops (it costs stamina; a fresh press spurs a burst), **Alt** walks, **S** pulls up and then backs up, and **Space** jumps. The horse speeds up and brakes with weight, and turns wider the faster it goes. Slopes, steps and water (it swims) are handled.
 - Every hoof is planted by a procedural gait (walk, trot, canter, gallop), so nothing skates. The rider posts at the trot and rises out of the saddle at the gallop. The camera pulls back and swings in behind the horse.
-- **Whistle (H)** and your horse comes to you. Two saddled horses wait at the stable by the west gate.
+- **Whistle (H)** and your horse comes to you. Before you've tamed one, the whistle calls the nearest free saddled horse instead. Two more saddled horses wait at the stable by the west gate, and a ridden horse left alone for a while makes its own way back.
 
 | | |
 |---|---|
@@ -145,7 +146,7 @@ Everything is in **`ReplicatedStorage.SicilyShared.Config`**. The most useful se
 | `Lighting.DayNightCycle` | false | lamps switch on at dusk when enabled |
 | `Intro.Enabled` / `Title` | true / `"CASTELMARE"` | opening flyover |
 | `Horses.Herds` | 4 herds | where wild horses graze, how many, their temperament |
-| `Horses.StableHorses` | 2 | saddled horses at the stable |
+| `Horses.StableHorses` / `PiazzaHorses` | 2 / 2 | saddled horses at the stable and tied up in the piazza |
 | `Combat.Loadout` | 5 guns | ids from `SicilyShared.Weapons` (keys 1–5) |
 | `Combat.PvP` / `DamageTownsfolk` | true / true | who can be shot |
 | `Combat.DeadEye`, `AimAssist`, `Cover` | on | the extras (`Enabled = false` turns one off) |
@@ -189,7 +190,7 @@ tools/          offline checks (Lune), preview renderer (three.js), installer, b
 `tools/build.sh` builds the installer and demo place with [Rojo](https://rojo.space) and runs the offline checks with [Lune](https://lune-org.github.io/docs):
 - `tools/lune/build-town.luau` runs the real generator against the built place. Lune validates every property, enum and value type against Roblox's API, and the script prints part, light and NPC-spot counts.
 - `tools/lune/test-characters.luau` checks the R6 rig and drives the real animation solver through every state, checking foot contact. It also builds every townsfolk outfit and converts a mock R15 NPC in place.
-- `tools/lune/test-horses.luau` runs the gait solver through every gait, turns, slopes and steps, and fails on sliding, floating or popping hooves. `test-riding.luau` checks the horse's handling, taming difficulty and herd AI.
+- `tools/lune/test-horses.luau` runs the gait solver through every gait, turns, slopes and steps, and fails on sliding, floating or popping hooves. `test-riding.luau` checks the horse's handling, taming difficulty and herd AI. `test-horse-spawn.luau` generates the town and starts the real server horse module on it: every herd, stable and piazza horse must end up in the world on dry ground, and the piazza horses and nearest herd close to the spawn.
 - `tools/lune/test-weapons.luau` builds every gun and checks the aim maths. `test-gunplay.luau` drives the real animation layer through draws, cross-draws, aiming, reloads, switching, mounted aiming (the legs must not move), cover and hit reactions. `test-combat.luau` runs the real server combat module against fake players: fire rate, ammo, damage by body part, every hit-validation rule, reloads, Dead Eye and the range targets.
 - `tools/preview/render.mjs` renders the preview shots above (`npm install` in `tools/preview`, then `node render.mjs <dir with town.json>`).
 

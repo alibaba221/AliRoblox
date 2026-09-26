@@ -172,11 +172,16 @@ Config.Horses = {
 		{ Name = "Prato di Levante", Center = Vector2.new(200, -206), Radius = 45, Count = 3, Temperament = "Calm" },
 		{ Name = "Colle Est", Center = Vector2.new(280, -40), Radius = 28, Count = 2, Temperament = "Wild" },
 		{ Name = "Piana Ovest", Center = Vector2.new(-398, -275), Radius = 55, Count = 2, Temperament = "Wild" },
+		-- just outside town: you can see them down the street east from the piazza
+		{ Name = "Prato del Borgo", Center = Vector2.new(147, -26), Radius = 14, Count = 3, Temperament = "Calm" },
 	},
 
 	-- Saddled horses at the stable by the west gate. Anyone can ride them, no taming needed.
 	StableHorses = 2,
 	StableCoats = { "Bay", "Grey" },
+	-- Saddled horses tied up in the piazza, a few steps from where players spawn.
+	PiazzaHorses = 2,
+	PiazzaCoats = { "Chestnut", "Palomino" },
 
 	RespawnTime = 75, -- a lost wild horse (fell in the sea, stuck, tamed then abandoned) is replaced
 	AbandonTime = 150, -- a tamed horse left alone this long (owner gone/far) returns to its herd/stable

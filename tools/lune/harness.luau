@@ -120,7 +120,11 @@ function Harness.load(placePath: string)
 			task = task,
 			typeof = typeof,
 			warn = function(...)
-				print("[warn]", ...)
+				if Harness.OnWarn then
+					Harness.OnWarn(...)
+				else
+					print("[warn]", ...)
+				end
 			end,
 		}
 	end

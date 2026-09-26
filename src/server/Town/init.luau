@@ -57,6 +57,7 @@ function Context.new(options)
 		Shops = {},
 		Doors = {},
 		StableSlots = {}, -- where the stable's saddled horses stand
+		HitchSlots = {}, -- saddled horses tied up in the piazza
 		RangeBottles = {}, -- shooting range targets (managed by the combat system at runtime)
 		RangeCans = {},
 		AmmoCrates = {},
@@ -97,6 +98,7 @@ local LIST_KEYS = {
 	"Fish",
 	"Shots",
 	"StableSlots",
+	"HitchSlots",
 	"RangeBottles",
 	"RangeCans",
 	"AmmoCrates",
@@ -144,6 +146,7 @@ function Town.ReadData(model: Model)
 		Shots = {},
 		Chats = {},
 		StableSlots = {},
+		HitchSlots = {},
 		RangeBottles = {},
 		RangeCans = {},
 		AmmoCrates = {},

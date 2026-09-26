@@ -19,6 +19,7 @@
 		Whistle = Vector3?                          owner's position when called
 		Owner = Vector3?                            owner's position (for Follow)
 		Home = Vector3, HomeRadius, Wild (bool)
+		Tied = boolean?                             tied to a hitching rail: stays put
 		Clear(direction) -> number                  free distance ahead in a direction
 		Walkable(point) -> boolean                  ground there is fine for a horse
 	}
@@ -113,7 +114,7 @@ function Brain:Update(senses)
 				self.Away = senses.Gunshot
 				self:Set("Flee", now, self.Rng:NextNumber(5, 8))
 			end
-		elseif senses.Gunshot and not senses.Wild and (senses.Gunshot - position).Magnitude < 30 then
+		elseif senses.Gunshot and not senses.Wild and not senses.Tied and (senses.Gunshot - position).Magnitude < 30 then
 			-- tamed horses shy away a few strides, then settle
 			self.Away = senses.Gunshot
 			self:Set("Flee", now, 1.6)
@@ -141,6 +142,9 @@ function Brain:Update(senses)
 			local roll = self.Rng:NextNumber()
 			if (position - senses.Home).Magnitude > senses.HomeRadius * 1.1 then
 				self:Set("Return", now, 30)
+			elseif senses.Tied then
+				-- at the rail: mostly standing, head up, now and then nosing the ground
+				self:Set(if roll < 0.3 then "Graze" else "Idle", now, self.Rng:NextNumber(4, 10))
 			elseif roll < 0.45 then
 				self.Target = pickSpot(self, senses)
 				self:Set(if self.Target then "Wander" else "Idle", now, 20)
